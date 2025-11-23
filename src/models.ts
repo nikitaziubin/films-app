@@ -1,52 +1,70 @@
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  phoneNumber: string;
+  role: 'LOGGED_IN' | 'ADMIN';
+}
+
 export interface Film {
   id: number;
   name: string;
-  quality?: string;
-  duration?: number; // minutes
-  previewPhoto?: string;
-  age?: string;
-  dateOfPublish?: string; // ISO
-  language?: string;
-  budget?: number;
-  description?: string;
-  is_for_series: boolean;
+  quality: string;
+  duration: string; // Java String, not number
+  previewPhoto: string;
+  ageLimit: string;
+  dateOfPublish: string; // ISO Date string
+  budget: string;
+  language: string;
+  description?: string; // Not in Java file, but usually needed. If missing in Java, backend won't send it.
+  series?: Series; // If null, it's a standalone film
+  filmsRatings?: Rating[];
+  filmsComments?: Comment[];
+  trailers?: Trailer[];
 }
 
 export interface Series {
   id: number;
   name: string;
-  date_of_publish: Date;
-  country_of_production: string;
-  production_company: string;
+  ageLimit: string;
+  dateOfPublish: string;
+  countryOfProduction: string;
+  productionCompanyName: string;
   status: string;
-  number_of_episodes: number;
-  filmIds: number[];
+  numberOfEpisodes: number;
+  films?: Film[]; // The episodes
 }
 
 export interface Trailer {
   id: number;
-  filmId: number;
+  trailerUrl: string;
+  ageLimit: string;
+  duration: string;
   title: string;
-  url: string;
-  duration?: number; // minutes
-  age?: string;
+  film?: Film; // Helper for frontend mapping if needed
 }
 
 export interface Rating {
   id: number;
-  filmId: number;
-  user: string;
-  date?: string;
-  rating: number; // 1..5
-  reviewTitle?: string;
+  dateOfPublish: string;
+  rating: number;
+  film?: Film; // Derived from relationship
+  user?: User;
 }
 
 export interface Comment {
   id: number;
-  filmId: number;
-  user: string;
-  date?: string;
-  text: string;
-  spoiler?: boolean;
-  language?: string;
+  textOfComment: string; // Matches Java
+  dateOfPublish: string;
+  spoiler: boolean;
+  language: string;
+  film?: Film;
+  user?: User;
+}
+
+// Authentication Responses
+export interface AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: User;
 }

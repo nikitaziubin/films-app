@@ -10,7 +10,8 @@ import { Router } from '@angular/router';
   template: `
     <h2>Login</h2>
     <form (ngSubmit)="submit()">
-      <input [(ngModel)]="username" name="u" placeholder="username" required />
+      <!-- Changed name="u" to name="email" to match backend expectation -->
+      <input [(ngModel)]="email" name="email" placeholder="email" required />
       <input
         [(ngModel)]="password"
         name="p"
@@ -23,11 +24,15 @@ import { Router } from '@angular/router';
   `,
 })
 export class LoginComponent {
-  username = '';
+  email = ''; // Changed from username to email
   password = '';
   constructor(private auth: AuthService, private router: Router) {}
+
   submit() {
-    this.auth.login(this.username, this.password);
-    this.router.navigateByUrl('/');
+    // Pass a single object with email and password
+    this.auth.login({ email: this.email, password: this.password }).subscribe({
+      next: () => this.router.navigateByUrl('/'),
+      error: (err) => console.error('Login failed', err),
+    });
   }
 }

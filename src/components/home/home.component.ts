@@ -1,10 +1,11 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, signal, effect } from '@angular/core';
+import { AuthService } from '../../services/auth.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DataService } from '../../services/data.service';
-import { RouterLink, RouterOutlet } from '@angular/router';
-import { ActivatedRoute } from '@angular/router';
+import { RouterLink, RouterOutlet, ActivatedRoute } from '@angular/router';
+import { Film } from '../../models';
 
 @Component({
   standalone: true,
@@ -56,130 +57,162 @@ import { ActivatedRoute } from '@angular/router';
       }
       .buy-button {
         position: absolute;
-        top: 30px;
+        top: 12px;
         right: 12px;
       }
       .payment-form input,
       .payment-form button {
         display: block;
-        width: 50%;
+        width: 100%;
         margin-bottom: 8px;
       }
     `,
   ],
   template: `
-    <h2>Films</h2>
+    <!-- Title Logic -->
+    <div *ngIf="user() as u" class="muted" style="margin-bottom:8px">
+      Logged in as: <strong>{{ u.name }}</strong> ({{ u.email }})
+    </div>
+    <h2 *ngIf="seriesId() === null">Films</h2>
+    <h2 *ngIf="seriesId() !== null">
+      <a routerLink="/" style="text-decoration:none; color:#666">Home</a> /
+      Series Details (ID: {{ seriesId() }})
+    </h2>
+
     <div class="grid">
+      <!-- Debug message if list is empty -->
+      <div
+        *ngIf="films().length === 0"
+        style="grid-column: 1/-1; padding: 20px; color: #666;"
+      >
+        No films.
+      </div>
+
       <div class="card" *ngFor="let f of films()">
-        <div *ngIf="seriesId() === null">
-          <button class="buy-button" (click)="toggleBuying(f.id)">
+        <!-- Buy Button (Home Page Only) -->
+        <div *ngIf="seriesId() === null && f.id">
+          <button class="buy-button" (click)="toggleBuying(f.id!)">
             Buy film
           </button>
         </div>
-        <div class="section" *ngIf="isBuying(f.id)">
+
+        <!-- Payment Form -->
+        <div class="section" *ngIf="f.id && isBuying(f.id!)">
           <h4>Payment Details for {{ f.name }}</h4>
           <form class="payment-form">
             <input placeholder="Card Number" name="cc-{{ f.id }}" />
             <input placeholder="Name on Card" name="cc-name-{{ f.id }}" />
             <input placeholder="CVC" name="cc-cvc-{{ f.id }}" />
             <button type="button">Buy Now</button>
-            <button type="button" (click)="toggleBuying(f.id)">Cancel</button>
+            <button type="button" (click)="toggleBuying(f.id!)">Cancel</button>
           </form>
         </div>
+
         <h3>{{ f.name }}</h3>
         <div class="muted">
-          {{ f.quality || '—' }} • {{ f.duration || '—' }} min •
+          {{ f.quality || '—' }} • {{ f.duration || '—' }} •
           {{ f.language || '—' }}
         </div>
         <p>{{ f.description || 'No description.' }}</p>
 
-        <!-- Only average rating on the card -->
-        <div class="section">
+        <!-- Ratings -->
+        <div class="section" *ngIf="f.id">
           <strong>Average rating:</strong>
-          <ng-container *ngIf="ratingCount(f.id) > 0; else noRating">
-            ⭐ {{ avgRating(f.id) }} ({{ ratingCount(f.id) }} ratings)
+          <ng-container *ngIf="ratingCount(f) > 0; else noRating">
+            ⭐ {{ avgRating(f) }} ({{ ratingCount(f) }} ratings)
           </ng-container>
           <ng-template #noRating>— No ratings yet</ng-template>
         </div>
 
-        <!-- Single-card toggle -->
-        <div class="toggle" (click)="toggleDetails(f.id)">
+        <!-- Toggle Details -->
+        <div class="toggle" *ngIf="f.id" (click)="toggleDetails(f.id!)">
           {{
-            isOpen(f.id)
+            isOpen(f.id!)
               ? '▼ Hide details'
               : '▶ Show details (trailers, rate & comments)'
           }}
         </div>
 
-        <!-- Details only for the open film -->
-        <div *ngIf="isOpen(f.id)">
+        <!-- Details Section -->
+        <div *ngIf="f.id && isOpen(f.id!)">
           <div class="section">
             <strong>Trailers</strong>
             <ul>
-              <li *ngFor="let t of trailersFor(f.id)">
-                <a [href]="t.url" target="_blank">{{ t.title }}</a>
-                <span class="muted">({{ t.duration || '—' }} min)</span>
+              <li *ngFor="let t of trailersFor(f)">
+                <a [href]="t.trailerUrl" target="_blank">{{ t.title }}</a>
+                <span class="muted">({{ t.duration || '—' }})</span>
               </li>
             </ul>
+            <div *ngIf="trailersFor(f).length === 0" class="muted">
+              No trailers available
+            </div>
           </div>
 
           <div class="section">
             <strong>Rate this film</strong>
-            <form (ngSubmit)="addRating(f.id)">
-              <input
-                required
-                [(ngModel)]="ratingDraft[f.id].user"
-                name="user-{{ f.id }}"
-                placeholder="Your name"
-              />
+
+            <form (ngSubmit)="addRating(f.id!)">
+              <div class="muted" *ngIf="user() as u; else mustLoginRate">
+                Rating as: <strong>{{ u.name }}</strong>
+              </div>
+              <ng-template #mustLoginRate>
+                <div class="muted">You must log in to rate.</div>
+              </ng-template>
+
               <input
                 required
                 type="number"
                 min="1"
                 max="5"
-                [(ngModel)]="ratingDraft[f.id].value"
+                [(ngModel)]="ratingDraft[f.id!].value"
                 name="rating-{{ f.id }}"
                 placeholder="1..5"
               />
-              <button>Add rating</button>
+              <button [disabled]="!user()">Add rating</button>
             </form>
           </div>
 
           <div class="section">
             <strong>Comments</strong>
-            <div *ngFor="let c of commentsFor(f.id)">
-              <b>{{ c.user }}</b
-              >: {{ c.text }}
+            <div *ngFor="let c of commentsFor(f)">
+              <b>{{ c.user?.name || 'Anonymous' }}</b
+              >: {{ c.textOfComment }}
               <span class="muted" *ngIf="c.spoiler">[spoiler]</span>
             </div>
+            <div *ngIf="commentsFor(f).length === 0" class="muted">
+              No comments yet.
+            </div>
 
-            <form (ngSubmit)="addComment(f.id)" style="margin-top:8px">
-              <input
-                required
-                [(ngModel)]="commentDraft[f.id].user"
-                name="cuser-{{ f.id }}"
-                placeholder="Your name"
-              />
+            <form (ngSubmit)="addComment(f.id!)" style="margin-top:8px">
+              <div class="muted" *ngIf="user() as u; else mustLogin">
+                Commenting as: <strong>{{ u.name }}</strong>
+              </div>
+              <ng-template #mustLogin>
+                <div class="muted">You must log in to comment.</div>
+              </ng-template>
+
               <textarea
                 required
-                [(ngModel)]="commentDraft[f.id].text"
+                [(ngModel)]="commentDraft[f.id!].text"
                 name="ctext-{{ f.id }}"
                 placeholder="Your comment"
               ></textarea>
-              <label
-                ><input
+              <label>
+                <input
                   type="checkbox"
-                  [(ngModel)]="commentDraft[f.id].spoiler"
+                  [(ngModel)]="commentDraft[f.id!].spoiler"
                   name="csp-{{ f.id }}"
                 />
-                spoiler</label
-              >
-              <button>Add comment</button>
+                spoiler
+              </label>
+              <button [disabled]="!user()">Add comment</button>
             </form>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Series List -->
     <div *ngIf="seriesId() === null">
       <h2 class="page-title" style="margin-top: 32px;">Series</h2>
       <div class="grid">
@@ -190,7 +223,7 @@ import { ActivatedRoute } from '@angular/router';
         >
           <h3>{{ s.name }}</h3>
           <p class="muted">
-            {{ s.status }} • {{ s.filmIds.length || 0 }} Episodes
+            {{ s.status }} • {{ s.numberOfEpisodes }} Episodes
           </p>
         </a>
       </div>
@@ -199,71 +232,105 @@ import { ActivatedRoute } from '@angular/router';
 })
 export class HomeComponent {
   seriesId = signal<number | null>(null);
-  constructor(private data: DataService, private route: ActivatedRoute) {
+  user = computed(() => this.auth.currentUser);
+
+  constructor(
+    private data: DataService,
+    private route: ActivatedRoute,
+    private auth: AuthService
+  ) {
     this.route.paramMap.subscribe((params) => {
       const idString = params.get('id');
       if (idString) {
-        this.seriesId.set(+idString);
+        this.seriesId.set(Number(idString));
       } else {
         this.seriesId.set(null);
+      }
+    });
+
+    // Debug: Watch data to see why filter might fail
+    effect(() => {
+      const currentId = this.seriesId();
+      const allFilms = this.allFilms();
+      if (currentId !== null) {
+        console.log(`[Home] Filter Debug:`);
+        console.log(
+          `- Looking for Series ID: ${currentId} (Type: ${typeof currentId})`
+        );
+
+        const sample = allFilms.find((f) => f.series);
+        if (sample) {
+          console.log(`- Sample Film Series Data:`, sample.series);
+          console.log(
+            `- Sample Film Series ID Type:`,
+            typeof sample.series?.id
+          );
+        } else {
+          console.log(`- No films with series data found in loaded films.`);
+        }
       }
     });
   }
 
   private allFilms = toSignal(this.data.films$, { initialValue: [] });
   allSeries = toSignal(this.data.series$, { initialValue: [] });
-  trailers = toSignal(this.data.trailers$, { initialValue: [] });
-  ratings = toSignal(this.data.ratings$, { initialValue: [] });
-  comments = toSignal(this.data.comments$, { initialValue: [] });
+  globalTrailers = toSignal(this.data.trailers$, { initialValue: [] });
+  globalRatings = toSignal(this.data.ratings$, { initialValue: [] });
+  globalComments = toSignal(this.data.comments$, { initialValue: [] });
 
   films = computed(() => {
     const id = this.seriesId();
-    if (id === null) {
-      return this.allFilms().filter((x) => x.is_for_series == false);
-    } else {
-      const serieToShow = this.allSeries().find((x) => x.id === id);
-      const filmIds = serieToShow?.filmIds || [];
+    const all = this.allFilms();
 
-      return this.allFilms().filter((f) => {
-        return filmIds.includes(f.id);
-      });
+    if (id === null) {
+      // Home Page: Return films where series is null or undefined
+      return all.filter((x) => !x.series);
+    } else {
+      return all.filter((f) => f.series && f.series.id === id);
     }
   });
 
-  // --- single-open card state
+  // --- state ---
   openFilmId: number | null = null;
   buyFilmId: number | null = null;
-  isOpen = (id: number) => this.openFilmId === id;
+
+  isOpen(id: number): boolean {
+    return this.openFilmId === id;
+  }
+  isBuying(id: number): boolean {
+    return this.buyFilmId === id;
+  }
+
   toggleDetails(id: number) {
     this.openFilmId = this.openFilmId === id ? null : id;
-    // ensure per-film drafts exist when details open
-    if (!this.ratingDraft[id]) this.ratingDraft[id] = { user: '', value: 5 };
+    if (!this.ratingDraft[id]) this.ratingDraft[id] = { value: 5 };
     if (!this.commentDraft[id])
-      this.commentDraft[id] = { user: '', text: '', spoiler: false };
+      this.commentDraft[id] = { text: '', spoiler: false };
   }
-  isBuying = (id: number) => this.buyFilmId === id;
+
   toggleBuying(id: number) {
     this.buyFilmId = this.buyFilmId === id ? null : id;
   }
 
-  // --- per-film drafts (stop cross-typing)
-  ratingDraft: Record<number, { user: string; value: number }> = {};
-  commentDraft: Record<
-    number,
-    { user: string; text: string; spoiler: boolean }
-  > = {};
+  ratingDraft: Record<number, { value: number }> = {};
+  commentDraft: Record<number, { text: string; spoiler: boolean }> = {};
 
-  // helpers for template (no arrow functions in bindings)
-  trailersFor = (filmId: number) =>
-    this.trailers().filter((t) => t.filmId === filmId);
-  commentsFor = (filmId: number) =>
-    this.comments().filter((c) => c.filmId === filmId);
+  // --- Helpers that use nested data first, then fallback ---
 
-  ratingCount(filmId: number) {
-    return this.ratings().filter((r) => r.filmId === filmId).length;
+  trailersFor(film: Film) {
+    return this.globalTrailers().filter((t) => t.film?.id === film.id);
   }
-  avgRating(filmId: number) {
-    const list = this.ratings().filter((r) => r.filmId === filmId);
+
+  commentsFor(film: Film) {
+    return this.globalComments().filter((c) => c.film?.id === film.id);
+  }
+
+  ratingCount(film: Film) {
+    return this.globalRatings().filter((r) => r.film?.id === film.id).length;
+  }
+
+  avgRating(film: Film) {
+    const list = this.globalRatings().filter((r) => r.film?.id === film.id);
     if (!list.length) return '—';
     const avg = list.reduce((s, r) => s + (r.rating || 0), 0) / list.length;
     return avg.toFixed(2);
@@ -271,26 +338,41 @@ export class HomeComponent {
 
   addRating(filmId: number) {
     const d = this.ratingDraft[filmId];
-    if (!d || !d.user) return;
+    const u = this.user();
+
+    if (!d) return;
+    if (!u || !u.id) {
+      alert('You must be logged in to rate.');
+      return;
+    }
+
     this.data.addRating({
-      filmId,
-      user: d.user,
       rating: +d.value,
-      reviewTitle: '',
+      film: { id: filmId },
+      user: { id: u.id },
     });
-    this.ratingDraft[filmId] = { user: '', value: 5 };
+
+    this.ratingDraft[filmId] = { value: 5 };
   }
 
   addComment(filmId: number) {
     const d = this.commentDraft[filmId];
-    if (!d || !d.user || !d.text) return;
+    const u = this.user();
+
+    if (!d || !d.text) return;
+    if (!u || !u.id) {
+      alert('You must be logged in to comment.');
+      return;
+    }
+
     this.data.addComment({
-      filmId,
-      user: d.user,
-      text: d.text,
+      textOfComment: d.text,
       spoiler: d.spoiler,
       language: 'EN',
+      film: { id: filmId },
+      user: { id: u.id },
     });
-    this.commentDraft[filmId] = { user: '', text: '', spoiler: false }; // reset only this film's form
+
+    this.commentDraft[filmId] = { text: '', spoiler: false };
   }
 }

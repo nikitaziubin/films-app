@@ -1,12 +1,12 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { NgIf } from '@angular/common';
+import { CommonModule, NgIf } from '@angular/common';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [RouterLink, NgIf],
+  imports: [RouterLink, NgIf, CommonModule],
   styles: [
     `
       nav {
@@ -20,35 +20,93 @@ import { NgIf } from '@angular/common';
       a {
         color: #fff;
         text-decoration: none;
+        font-weight: 500;
+      }
+      a:hover {
+        text-decoration: underline;
       }
       .spacer {
         flex: 1;
       }
       button {
-        padding: 6px 10px;
+        padding: 4px 10px;
+        background: #444;
+        color: white;
+        border: 1px solid #666;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-left: 10px;
+      }
+      button:hover {
+        background: #555;
+      }
+      input {
+        padding: 6px;
+        border-radius: 4px;
+        border: none;
+        margin-right: 8px;
+      }
+      .user-info {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        line-height: 1.2;
+        margin-right: 10px;
+        font-size: 0.9em;
+      }
+      .user-email {
+        font-size: 0.8em;
+        color: #aaa;
+      }
+      .admin-badge {
+        color: #ffd700; /* Gold color */
+        font-weight: bold;
+        font-size: 0.8em;
+        margin-left: 5px;
       }
     `,
   ],
   template: `
     <nav>
-      <a routerLink="/">CATALOG</a>
-      <a routerLink="/films">Films (CRUD)</a>
-      <a routerLink="/series">Series (CRUD)</a>
-      <a routerLink="/trailers">Trailers (CRUD)</a>
-      <a routerLink="/comments">Comments (CRUD)</a>
-      <a routerLink="/ratings">Ratings (CRUD)</a>
-      <input placeholder="search for the film">
-      <button type="button">filter</button>
+      <!-- Visible to everyone -->
+      <a routerLink="/" style="font-size: 1.2em; font-weight: bold;">CATALOG</a>
+
+      <!-- Visible ONLY to ADMIN -->
+      <ng-container *ngIf="auth.isAdmin()">
+        <a routerLink="/films">Films</a>
+        <a routerLink="/series">Series</a>
+        <a routerLink="/trailers">Trailers</a>
+        <a routerLink="/comments">Comments</a>
+        <a routerLink="/ratings">Ratings</a>
+      </ng-container>
+
       <span class="spacer"></span>
 
-      <span *ngIf="!auth.isLoggedIn()">
-        <a routerLink="/login">Login</a> |
+      <!-- Search and Filter -->
+      <input placeholder="Search films..." />
+      <button type="button">Filter</button>
+
+      <!-- Auth Links (Not Logged In) -->
+      <span *ngIf="!auth.isLoggedIn()" style="margin-left: 15px;">
+        <a routerLink="/login">Login</a>
+        <span style="margin: 0 5px; color: #666;">|</span>
         <a routerLink="/register">Register</a>
       </span>
-      <span *ngIf="auth.isLoggedIn()">
-        Logged in as <strong>{{ auth.user() }}</strong>
+
+      <!-- Auth Links (Logged In) -->
+      <div
+        *ngIf="auth.isLoggedIn()"
+        style="display: flex; align-items: center; margin-left: 15px;"
+      >
+        <div class="user-info">
+          <span>
+            <span *ngIf="auth.isAdmin()" class="admin-badge">(ADMIN)</span>
+            {{ auth.currentUser?.name || 'User' }}
+          </span>
+          <span class="user-email">{{ auth.user()?.email }}</span>
+        </div>
         <button (click)="auth.logout()">Logout</button>
-      </span>
+      </div>
     </nav>
   `,
 })
