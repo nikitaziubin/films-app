@@ -84,3 +84,13 @@ export interface Genre {
   popularityScore?: number | null;
 }
 
+export interface Payment {
+  id: number;
+  amount: number;
+  paymentMethod: string;
+  transactionStatus: string;
+  dateOfPublish: string;
+  film?: Film;
+  user?: User;
+}
+

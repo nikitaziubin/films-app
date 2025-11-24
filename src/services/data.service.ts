@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject } from 'rxjs';
-import { Film, Series, Trailer, Rating, Comment, User, ProductionCompany, Genre } from '../models';
+import { Film, Series, Trailer, Rating, Comment, User, ProductionCompany, Genre, Payment } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class DataService {
@@ -15,6 +15,7 @@ export class DataService {
   users$ = new BehaviorSubject<User[]>([]);
   productionCompanies$ = new BehaviorSubject<ProductionCompany[]>([]);
   genres$ = new BehaviorSubject<Genre[]>([]);
+  payments$ = new BehaviorSubject<Payment[]>([]);
 
   constructor(private http: HttpClient) {
     this.refreshAll();
@@ -183,5 +184,17 @@ export class DataService {
     this.http
       .get<Genre[]>(`${this.apiUrl}/genres`)
       .subscribe((g) => this.genres$.next(g));
+  }
+  getAllPayments() {
+    this.http
+      .get<Payment[]>(`${this.apiUrl}/payments`)
+      .subscribe((ps) => this.payments$.next(ps));
+  }
+  getMyPayments(userId: number) {
+    this.http
+      .get<Payment[]>(`${this.apiUrl}/payments`)
+      .subscribe((all) =>
+        this.payments$.next(all.filter((p) => p.user?.id === userId))
+      );
   }
 }

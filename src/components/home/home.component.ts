@@ -69,10 +69,6 @@ import { Film } from '../../models';
     `,
   ],
   template: `
-    <!-- Title Logic -->
-    <div *ngIf="user() as u" class="muted" style="margin-bottom:8px">
-      Logged in as: <strong>{{ u.name }}</strong> ({{ u.email }})
-    </div>
     <h2 *ngIf="seriesId() === null">Films</h2>
     <h2 *ngIf="seriesId() !== null">
       <a routerLink="/" style="text-decoration:none; color:#666">Home</a> /
@@ -80,7 +76,6 @@ import { Film } from '../../models';
     </h2>
 
     <div class="grid">
-      <!-- Debug message if list is empty -->
       <div
         *ngIf="films().length === 0"
         style="grid-column: 1/-1; padding: 20px; color: #666;"

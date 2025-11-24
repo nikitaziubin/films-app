@@ -3,6 +3,8 @@ import { HomeComponent } from '../components/home/home.component';
 import { AdminListComponent } from '../components/admin-list/admin-list.component';
 import { LoginComponent } from '../components/auth/login.component';
 import { RegisterComponent } from '../components/auth/register.component';
+import { MyPaymentsComponent } from '../components/payments/payments.component';
+
 
 export const appRoutes: Routes = [
   { path: '', component: HomeComponent, title: 'Films' },
@@ -43,5 +45,6 @@ export const appRoutes: Routes = [
   },
   { path: 'login', component: LoginComponent, title: 'Login' },
   { path: 'register', component: RegisterComponent, title: 'Register' },
+  { path: 'payments', component: MyPaymentsComponent },
   { path: '**', redirectTo: '' },
 ];

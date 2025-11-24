@@ -1,6 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, computed } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NavbarComponent } from '../components/navbar/navbar.component';
+import { AuthService } from '../services/auth.service';
+
 
 @Component({
   selector: 'app-root',
@@ -13,4 +15,17 @@ import { NavbarComponent } from '../components/navbar/navbar.component';
     </main>
   `,
 })
-export class AppComponent {}
+export class AppComponent {
+  user = computed(() => this.auth.currentUser);
+
+  constructor(private auth: AuthService) {}
+
+  isLoggedIn() {
+    return !!this.user();
+  }
+
+  isAdmin() {
+    return this.user()?.role === 'ADMIN';
+  }
+}
+

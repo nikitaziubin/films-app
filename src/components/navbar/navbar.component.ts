@@ -80,20 +80,19 @@ import { CommonModule, NgIf } from '@angular/common';
         <a routerLink="/ratings">Ratings</a>
       </ng-container>
 
+      <a routerLink="/payments" *ngIf="auth.isLoggedIn()"> My Payments </a>
+
       <span class="spacer"></span>
 
-      <!-- Search and Filter -->
       <input placeholder="Search films..." />
       <button type="button">Filter</button>
 
-      <!-- Auth Links (Not Logged In) -->
       <span *ngIf="!auth.isLoggedIn()" style="margin-left: 15px;">
         <a routerLink="/login">Login</a>
         <span style="margin: 0 5px; color: #666;">|</span>
         <a routerLink="/register">Register</a>
       </span>
 
-      <!-- Auth Links (Logged In) -->
       <div
         *ngIf="auth.isLoggedIn()"
         style="display: flex; align-items: center; margin-left: 15px;"
