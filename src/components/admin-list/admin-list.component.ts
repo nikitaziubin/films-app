@@ -77,6 +77,8 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
             <th>Age Limit</th>
             <th>Budget</th>
             <th>Series</th>
+            <th>Production Company</th>
+            <th>Genres</th>
             <th></th>
           </tr>
           <tr
@@ -90,6 +92,8 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
             <td>{{ x.ageLimit }}</td>
             <td>{{ x.budget }}</td>
             <td>{{ x.series?.name || '—' }}</td>
+            <td>{{ x.productionCompany?.name }}</td>
+            <td>{{ getGenreNames(x) }}</td>
             <td class="actions">
               <button (click)="edit(x, $event)">Edit</button>
               <button (click)="remove('films', x.id, $event)">Delete</button>
@@ -248,7 +252,25 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
               </option>
             </select>
           </label>
-
+          <label>
+            Production company
+            <select [(ngModel)]="film.productionCompanyId" name="fprod">
+              <option
+                *ngFor="let pc of productionCompanies()"
+                [ngValue]="pc.id"
+              >
+                {{ pc.name }} ({{ pc.country }})
+              </option>
+            </select>
+          </label>
+          <label>
+            Genres
+            <select multiple [(ngModel)]="film.genreIds" name="fgenres">
+              <option *ngFor="let g of genres()" [ngValue]="g.id">
+                {{ g.genreName }}
+              </option>
+            </select>
+          </label>
           <div class="actions">
             <button type="button" (click)="saveFilm()">
               {{ film.id ? 'Update' : 'Create' }}
@@ -438,7 +460,11 @@ export class AdminListComponent {
   selected: any = null;
 
   // working models
-  film: Partial<Film> & { seriesId?: number | null } = {};
+  film: Partial<Film> & {
+    seriesId?: number | null;
+    productionCompanyId?: number | null;
+    genreIds?: number[];
+  } = {};
   series: Partial<Series> = {};
   trailer: Partial<Trailer> & { filmId?: number | null } = {};
   rating: Partial<Rating> & {
@@ -453,6 +479,10 @@ export class AdminListComponent {
 
   // Signals for data
   private allFilms = toSignal(this.data.films$, { initialValue: [] });
+  productionCompanies = toSignal(this.data.productionCompanies$, {
+    initialValue: [],
+  });
+  genres = toSignal(this.data.genres$, { initialValue: [] });
 
   serieFilms = computed(() => {
     const all = this.allFilms();
@@ -492,6 +522,8 @@ export class AdminListComponent {
         this.film = {
           ...item,
           seriesId: item.series?.id ?? null,
+          productionCompanyId: item.productionCompany?.id ?? null,
+          genreIds: item.genres ? item.genres.map((g: any) => g.id) : [],
         };
         break;
       case 'series':
@@ -522,7 +554,7 @@ export class AdminListComponent {
 
   clear() {
     this.selected = null;
-    this.film = {};
+    this.film = { genreIds: [] };
     this.series = {};
     this.trailer = {};
     this.rating = { rating: 5 };
@@ -542,7 +574,11 @@ export class AdminListComponent {
 
   // saves
   saveFilm() {
-    const f = this.film as Film & { seriesId?: number | null };
+    const f = this.film as Film & {
+      seriesId?: number | null;
+      productionCompanyId?: number | null;
+      genreIds?: number[];
+    };
 
     const payload: any = {
       name: f.name!,
@@ -560,6 +596,18 @@ export class AdminListComponent {
       payload.series = { id: f.seriesId };
     } else {
       payload.series = null;
+    }
+
+    if (f.productionCompanyId != null) {
+      payload.productionCompany = { id: f.productionCompanyId };
+    } else {
+      payload.productionCompany = null;
+    }
+
+    if (f.genreIds && f.genreIds.length > 0) {
+      payload.genres = f.genreIds.map((id) => ({ id }));
+    } else {
+      payload.genres = [];
     }
 
     if (f.id) {
@@ -682,5 +730,8 @@ export class AdminListComponent {
     }
 
     this.clear();
+  }
+  getGenreNames(film: any): string {
+    return (film.genres || []).map((g: any) => g.genreName).join(', ');
   }
 }

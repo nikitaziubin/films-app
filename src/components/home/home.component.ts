@@ -113,6 +113,9 @@ import { Film } from '../../models';
           {{ f.quality || '—' }} • {{ f.duration || '—' }} •
           {{ f.language || '—' }}
         </div>
+        <div class="muted">
+          Genres: {{ getGenreNames(f) }}
+        </div>
         <p>{{ f.description || 'No description.' }}</p>
 
         <!-- Ratings -->
@@ -374,5 +377,8 @@ export class HomeComponent {
     });
 
     this.commentDraft[filmId] = { text: '', spoiler: false };
+  }
+  getGenreNames(film: any): string {
+    return (film.genres || []).map((g: any) => g.genreName).join(', ');
   }
 }

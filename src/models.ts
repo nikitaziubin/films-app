@@ -7,6 +7,7 @@ export interface User {
 }
 
 export interface Film {
+[x: string]: any;
   id: number;
   name: string;
   quality: string;
@@ -17,7 +18,8 @@ export interface Film {
   budget: string;
   language: string;
   description?: string; // Not in Java file, but usually needed. If missing in Java, backend won't send it.
-  series?: Series; // If null, it's a standalone film
+  series?: Series;
+  productionCompany?: ProductionCompany;
   filmsRatings?: Rating[];
   filmsComments?: Comment[];
   trailers?: Trailer[];
@@ -32,7 +34,14 @@ export interface Series {
   productionCompanyName: string;
   status: string;
   numberOfEpisodes: number;
-  films?: Film[]; // The episodes
+  films?: Film[];
+}
+export interface ProductionCompany {
+  id: number;
+  name: string;
+  country: string;
+  foundationDate: string;
+  contactEmail: string
 }
 
 export interface Trailer {
@@ -68,3 +77,10 @@ export interface AuthResponse {
   refreshToken: string;
   user: User;
 }
+export interface Genre {
+  id: number;
+  genreName: string;
+  description?: string | null;
+  popularityScore?: number | null;
+}
+

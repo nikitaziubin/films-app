@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject } from 'rxjs';
-import { Film, Series, Trailer, Rating, Comment, User } from '../models';
+import { Film, Series, Trailer, Rating, Comment, User, ProductionCompany, Genre } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class DataService {
@@ -13,6 +13,8 @@ export class DataService {
   ratings$ = new BehaviorSubject<Rating[]>([]);
   comments$ = new BehaviorSubject<Comment[]>([]);
   users$ = new BehaviorSubject<User[]>([]);
+  productionCompanies$ = new BehaviorSubject<ProductionCompany[]>([]);
+  genres$ = new BehaviorSubject<Genre[]>([]);
 
   constructor(private http: HttpClient) {
     this.refreshAll();
@@ -25,8 +27,14 @@ export class DataService {
     this.getAllRatings();
     this.getAllComments();
     this.getAllUsers();
+    this.getAllProductionCompanies();
+    this.getAllGenres();
   }
-
+  getAllProductionCompanies() {
+    this.http
+      .get<ProductionCompany[]>(`${this.apiUrl}/production-companies`)
+      .subscribe((pcs) => this.productionCompanies$.next(pcs));
+  }
   getAllUsers() {
     this.http
       .get<User[]>(`${this.apiUrl}/users`)
@@ -170,5 +178,10 @@ export class DataService {
     this.http
       .delete(`${this.apiUrl}/films-ratings/${id}`)
       .subscribe(() => this.getAllRatings());
+  }
+  getAllGenres() {
+    this.http
+      .get<Genre[]>(`${this.apiUrl}/genres`)
+      .subscribe((g) => this.genres$.next(g));
   }
 }
