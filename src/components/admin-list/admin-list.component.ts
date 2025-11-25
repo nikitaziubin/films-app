@@ -237,7 +237,7 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
             name="fage"
           />
           <input type="date" [(ngModel)]="film.dateOfPublish" name="fdate" />
-          <input placeholder="Budget" [(ngModel)]="film.budget" name="fbud" />
+          <input type="number" placeholder="Budget" [(ngModel)]="film.budget" name="fbud" />
           <textarea
             placeholder="Description"
             [(ngModel)]="film.description"

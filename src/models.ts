@@ -15,7 +15,7 @@ export interface Film {
   previewPhoto: string;
   ageLimit: string;
   dateOfPublish: string; // ISO Date string
-  budget: string;
+  budget: number;
   language: string;
   description?: string; // Not in Java file, but usually needed. If missing in Java, backend won't send it.
   series?: Series;
@@ -94,3 +94,14 @@ export interface Payment {
   user?: User;
 }
 
+export interface UserProfile {
+  id?: number;
+  birthDate: string;
+  gender: string;
+  country: string;
+  city: string;
+  address: string;
+  zipCode: string;
+  region: string;
+  user?: { id: number };
+}

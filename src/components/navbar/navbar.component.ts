@@ -59,7 +59,7 @@ import { CommonModule, NgIf } from '@angular/common';
         color: #aaa;
       }
       .admin-badge {
-        color: #ffd700; /* Gold color */
+        color: #ffd700;
         font-weight: bold;
         font-size: 0.8em;
         margin-left: 5px;
@@ -68,10 +68,8 @@ import { CommonModule, NgIf } from '@angular/common';
   ],
   template: `
     <nav>
-      <!-- Visible to everyone -->
       <a routerLink="/" style="font-size: 1.2em; font-weight: bold;">CATALOG</a>
 
-      <!-- Visible ONLY to ADMIN -->
       <ng-container *ngIf="auth.isAdmin()">
         <a routerLink="/films">Films</a>
         <a routerLink="/series">Series</a>
@@ -81,6 +79,7 @@ import { CommonModule, NgIf } from '@angular/common';
       </ng-container>
 
       <a routerLink="/payments" *ngIf="auth.isLoggedIn()"> My Payments </a>
+      <a routerLink="/profile" *ngIf="auth.isLoggedIn()">My Profile</a>
 
       <span class="spacer"></span>
 
