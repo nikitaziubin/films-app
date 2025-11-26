@@ -5,7 +5,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DataService } from '../../services/data.service';
 import { RouterLink, RouterOutlet, ActivatedRoute } from '@angular/router';
-import { Film } from '../../models';
+import { Film, WikiDescription } from '../../models';
+import { WikiDescriptionService } from '../../services/wiki-description.service';
 
 @Component({
   standalone: true,
@@ -24,6 +25,9 @@ import { Film } from '../../models';
         padding: 12px;
         background: #fff;
         position: relative;
+      }
+      .card:hover .wiki-action {
+        opacity: 1;
       }
       a.card-link {
         text-decoration: none;
@@ -65,6 +69,18 @@ import { Film } from '../../models';
         display: block;
         width: 100%;
         margin-bottom: 8px;
+      }
+      .wiki-action {
+        margin-top: 4px;
+        font-size: 12px;
+        color: #0066cc;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+      .wiki-action.disabled {
+        color: #999;
+        cursor: default;
       }
     `,
   ],
@@ -108,10 +124,28 @@ import { Film } from '../../models';
           {{ f.quality || '—' }} • {{ f.duration || '—' }} •
           {{ f.language || '—' }}
         </div>
-        <div class="muted">
-          Genres: {{ getGenreNames(f) }}
+        <div class="muted">Genres: {{ getGenreNames(f) }}</div>
+        <div class="section">
+          <strong>Description</strong>
+          <p *ngIf="f.description as d">
+            {{ d.descriptionText }}
+          </p>
+          <p *ngIf="!f.description" class="muted">No description yet.</p>
+
+          <!-- Hover / click action: only if no description -->
+          <div
+            *ngIf="!f.description && f.id"
+            class="wiki-action"
+            (click)="!wikiLoading[f.id!] && loadWikiDescription(f)"
+            [class.disabled]="wikiLoading[f.id!]"
+          >
+            {{
+              wikiLoading[f.id!]
+                ? 'Loading description from Wikipedia…'
+                : 'See description (Wikipedia)'
+            }}
+          </div>
         </div>
-        <p>{{ f.description || 'No description.' }}</p>
 
         <!-- Ratings -->
         <div class="section" *ngIf="f.id">
@@ -235,7 +269,8 @@ export class HomeComponent {
   constructor(
     private data: DataService,
     private route: ActivatedRoute,
-    private auth: AuthService
+    private auth: AuthService,
+    private wikiService: WikiDescriptionService
   ) {
     this.route.paramMap.subscribe((params) => {
       const idString = params.get('id');
@@ -312,6 +347,7 @@ export class HomeComponent {
 
   ratingDraft: Record<number, { value: number }> = {};
   commentDraft: Record<number, { text: string; spoiler: boolean }> = {};
+  wikiLoading: Record<number, boolean> = {};
 
   // --- Helpers that use nested data first, then fallback ---
 
@@ -375,5 +411,23 @@ export class HomeComponent {
   }
   getGenreNames(film: any): string {
     return (film.genres || []).map((g: any) => g.genreName).join(', ');
+  }
+  loadWikiDescription(film: Film) {
+    if (!film.id) return;
+    const id = film.id;
+
+    if (this.wikiLoading[id]) return;
+
+    this.wikiLoading[id] = true;
+
+    this.wikiService.createForFilm(id).subscribe({
+      next: (desc: WikiDescription) => {
+        this.wikiLoading[id] = false;
+        film.description = desc;
+      },
+      error: () => {
+        this.wikiLoading[id] = false;
+      },
+    });
   }
 }

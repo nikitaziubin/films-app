@@ -7,7 +7,7 @@ export interface User {
 }
 
 export interface Film {
-[x: string]: any;
+  [x: string]: any;
   id: number;
   name: string;
   quality: string;
@@ -17,12 +17,12 @@ export interface Film {
   dateOfPublish: string; // ISO Date string
   budget: number;
   language: string;
-  description?: string; // Not in Java file, but usually needed. If missing in Java, backend won't send it.
   series?: Series;
   productionCompany?: ProductionCompany;
   filmsRatings?: Rating[];
   filmsComments?: Comment[];
   trailers?: Trailer[];
+  description?: WikiDescription;
 }
 
 export interface Series {
@@ -71,6 +71,10 @@ export interface Comment {
   user?: User;
 }
 
+export interface WikiDescription {
+  id: number;
+  descriptionText: string;
+}
 // Authentication Responses
 export interface AuthResponse {
   accessToken: string;

@@ -238,11 +238,7 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
           />
           <input type="date" [(ngModel)]="film.dateOfPublish" name="fdate" />
           <input type="number" placeholder="Budget" [(ngModel)]="film.budget" name="fbud" />
-          <textarea
-            placeholder="Description"
-            [(ngModel)]="film.description"
-            name="fdesc"
-          ></textarea>
+
           <label>
             Series
             <select [(ngModel)]="film.seriesId" name="fseries">
