@@ -7,11 +7,49 @@ import { Router } from '@angular/router';
 @Component({
   standalone: true,
   imports: [CommonModule, FormsModule],
+  styles: [
+    `
+      input {
+        display: block;
+        margin-bottom: 8px;
+        width: 100%;
+        padding: 8px;
+      }
+      button {
+        padding: 8px 16px;
+      }
+      .error {
+        color: #b00020;
+        font-size: 12px;
+        margin-top: -4px;
+        margin-bottom: 6px;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    `,
+  ],
   template: `
     <h2>Login</h2>
-    <form (ngSubmit)="submit()">
-      <!-- Changed name="u" to name="email" to match backend expectation -->
-      <input [(ngModel)]="email" name="email" placeholder="email" required />
+    <form #loginForm="ngForm" (ngSubmit)="submit()">
+      <input
+        [(ngModel)]="email"
+        name="email"
+        placeholder="Email"
+        required
+        pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$"
+        #emailCtrl="ngModel"
+      />
+      <div
+        class="error"
+        *ngIf="emailCtrl.invalid && (emailCtrl.dirty || emailCtrl.touched)"
+      >
+        <span *ngIf="emailCtrl.errors?.['required']">Email is required.</span>
+        <span *ngIf="emailCtrl.errors?.['pattern']"
+          >Please enter a valid email.</span
+        >
+      </div>
       <input
         [(ngModel)]="password"
         name="p"
@@ -19,7 +57,7 @@ import { Router } from '@angular/router';
         type="password"
         required
       />
-      <button>Login</button>
+      <button [disabled]="loginForm.invalid">Login</button>
     </form>
   `,
 })

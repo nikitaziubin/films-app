@@ -64,6 +64,19 @@ import { AuthService } from '../../services/auth.service';
         font-size: 0.9rem;
         color: #555;
       }
+      .error {
+        color: #b00020;
+        font-size: 0.78rem;
+        margin-top: 2px;
+        font-weight: 400;
+      }
+      button:disabled,
+      button.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: #888 !important;
+        border-color: #666 !important;
+      }
     `,
   ],
   template: `
@@ -80,7 +93,11 @@ import { AuthService } from '../../services/auth.service';
         </div>
         <div class="info-box" *ngIf="loading">Loading profile...</div>
 
-        <form (ngSubmit)="save()" *ngIf="!loading">
+        <form
+          *ngIf="!loading"
+          #profileForm="ngForm"
+          (ngSubmit)="onSaveProfile(profileForm)"
+        >
           <label>
             Birth date
             <input
@@ -88,46 +105,131 @@ import { AuthService } from '../../services/auth.service';
               [(ngModel)]="model.birthDate"
               name="birthDate"
               required
+              #birthDate="ngModel"
             />
+            <span
+              class="error"
+              *ngIf="
+                birthDate.invalid && (birthDate.dirty || birthDate.touched)
+              "
+            >
+              Birth date is required.
+            </span>
           </label>
 
           <label>
             Gender
-            <select [(ngModel)]="model.gender" name="gender" required>
+            <select
+              [(ngModel)]="model.gender"
+              name="gender"
+              required
+              #gender="ngModel"
+            >
               <option value="" disabled>Select gender</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
               <option value="Other">Other</option>
             </select>
+            <span
+              class="error"
+              *ngIf="gender.invalid && (gender.dirty || gender.touched)"
+            >
+              Gender is required.
+            </span>
           </label>
 
           <label>
             Country
-            <input [(ngModel)]="model.country" name="country" required />
+            <input
+              [(ngModel)]="model.country"
+              name="country"
+              required
+              #country="ngModel"
+            />
+            <span
+              class="error"
+              *ngIf="country.invalid && (country.dirty || country.touched)"
+            >
+              Country is required.
+            </span>
           </label>
 
           <label>
             City
-            <input [(ngModel)]="model.city" name="city" required />
+            <input
+              [(ngModel)]="model.city"
+              name="city"
+              required
+              #city="ngModel"
+            />
+            <span
+              class="error"
+              *ngIf="city.invalid && (city.dirty || city.touched)"
+            >
+              City is required.
+            </span>
           </label>
 
           <label class="full-row">
             Address
-            <input [(ngModel)]="model.address" name="address" required />
+            <input
+              [(ngModel)]="model.address"
+              name="address"
+              required
+              #address="ngModel"
+            />
+            <span
+              class="error"
+              *ngIf="address.invalid && (address.dirty || address.touched)"
+            >
+              Address is required.
+            </span>
           </label>
 
           <label>
             ZIP Code
-            <input [(ngModel)]="model.zipCode" name="zipCode" required />
+            <input
+              [(ngModel)]="model.zipCode"
+              name="zipCode"
+              required
+              pattern="^[0-9A-Za-z- ]{3,10}$"
+              #zipCode="ngModel"
+            />
+            <span
+              class="error"
+              *ngIf="zipCode.invalid && (zipCode.dirty || zipCode.touched)"
+            >
+              <ng-container *ngIf="zipCode.errors?.['required']">
+                ZIP code is required.
+              </ng-container>
+              <ng-container *ngIf="zipCode.errors?.['pattern']">
+                ZIP code must be 3–10 characters (digits/letters/-/space).
+              </ng-container>
+            </span>
           </label>
 
           <label>
             Region
-            <input [(ngModel)]="model.region" name="region" required />
+            <input
+              [(ngModel)]="model.region"
+              name="region"
+              required
+              #region="ngModel"
+            />
+            <span
+              class="error"
+              *ngIf="region.invalid && (region.dirty || region.touched)"
+            >
+              Region is required.
+            </span>
           </label>
 
           <div class="actions">
-            <button type="submit">
+            <button
+              type="submit"
+              [disabled]="profileForm.invalid"
+              [class.disabled]="profileForm.invalid"
+            >
               {{ loaded ? 'Update profile' : 'Create profile' }}
             </button>
           </div>
@@ -215,5 +317,12 @@ export class UserProfileComponent {
         },
       });
     }
+  }
+  onSaveProfile(form: any) {
+    if (form.invalid) {
+      form.control.markAllAsTouched();
+      return;
+    }
+    this.save();
   }
 }

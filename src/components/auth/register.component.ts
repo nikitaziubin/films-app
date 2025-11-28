@@ -18,34 +18,96 @@ import { Router, RouterLink } from '@angular/router';
       button {
         padding: 8px 16px;
       }
+      .error {
+        color: #b00020;
+        font-size: 12px;
+        margin-top: -4px;
+        margin-bottom: 6px;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
     `,
   ],
   template: `
     <h2>Register</h2>
-    <form (ngSubmit)="submit()">
-      <input [(ngModel)]="name" name="name" placeholder="Full Name" required />
+    <h2>Register</h2>
+    <form #registerForm="ngForm" (ngSubmit)="onRegister(registerForm)">
+      <input
+        [(ngModel)]="name"
+        name="name"
+        placeholder="Full Name"
+        required
+        #nameCtrl="ngModel"
+      />
+      <div
+        class="error"
+        *ngIf="nameCtrl.invalid && (nameCtrl.dirty || nameCtrl.touched)"
+      >
+        Name is required.
+      </div>
       <input
         [(ngModel)]="email"
         name="email"
         placeholder="Email"
-        type="email"
         required
+        pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$"
+        #emailCtrl="ngModel"
       />
+      <div
+        class="error"
+        *ngIf="emailCtrl.invalid && (emailCtrl.dirty || emailCtrl.touched)"
+      >
+        <span *ngIf="emailCtrl.errors?.['required']">Email is required.</span>
+        <span *ngIf="emailCtrl.errors?.['pattern']"
+          >Please enter a valid email.</span
+        >
+      </div>
+
       <input
         [(ngModel)]="phoneNumber"
         name="phone"
         placeholder="Phone Number"
         required
+        #phoneCtrl="ngModel"
+        pattern="^\\+?\\d{6,15}$"
       />
+      <div
+        class="error"
+        *ngIf="phoneCtrl.invalid && (phoneCtrl.dirty || phoneCtrl.touched)"
+      >
+        <span *ngIf="phoneCtrl.errors?.['required']"
+          >Phone number is required.</span
+        >
+        <span *ngIf="phoneCtrl.errors?.['pattern']"
+          >Enter a valid phone number.</span
+        >
+      </div>
       <input
         [(ngModel)]="password"
         name="password"
         placeholder="Password"
         type="password"
         required
+        minlength="6"
+        #passwordCtrl="ngModel"
       />
+      <div
+        class="error"
+        *ngIf="
+          passwordCtrl.invalid && (passwordCtrl.dirty || passwordCtrl.touched)
+        "
+      >
+        <span *ngIf="passwordCtrl.errors?.['required']"
+          >Password is required.</span
+        >
+        <span *ngIf="passwordCtrl.errors?.['minlength']"
+          >Password must be at least 6 characters.</span
+        >
+      </div>
 
-      <button>Create account</button>
+      <button [disabled]="registerForm.invalid">Create account</button>
       <p>Already have an account? <a routerLink="/login">Login</a></p>
     </form>
   `,
@@ -81,5 +143,12 @@ export class RegisterComponent {
         );
       },
     });
+  }
+  onRegister(form: any) {
+    if (form.invalid) {
+      form.control.markAllAsTouched();
+      return;
+    }
+    this.submit();
   }
 }

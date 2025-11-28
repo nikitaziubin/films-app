@@ -62,6 +62,12 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
         margin: 0;
         font-size: 0.95em;
       }
+      .error {
+        color: #b00020;
+        font-size: 12px;
+        margin-top: -4px;
+        margin-bottom: 6px;
+      }
     `,
   ],
   template: `
@@ -209,36 +215,119 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
         <h3>Attributes / Editor</h3>
 
         <!-- FILM FORM -->
-        <form *ngIf="entity() === 'films'">
-          <input placeholder="Name" [(ngModel)]="film.name" name="fname" />
+        <form *ngIf="entity() === 'films'" #filmForm="ngForm">
+          <input
+            placeholder="Name"
+            [(ngModel)]="film.name"
+            name="fname"
+            required
+            #fname="ngModel"
+          />
+          <div
+            class="error"
+            *ngIf="fname.invalid && (fname.dirty || fname.touched)"
+          >
+            Name is required.
+          </div>
           <input
             placeholder="Language"
             [(ngModel)]="film.language"
             name="flang"
+            required
+            #flang="ngModel"
           />
+          <div
+            class="error"
+            *ngIf="flang.invalid && (flang.dirty || flang.touched)"
+          >
+            Language is required.
+          </div>
           <input
             placeholder="Duration"
             [(ngModel)]="film.duration"
             name="fdur"
+            required
+            #fdur="ngModel"
           />
+          <div
+            class="error"
+            *ngIf="fdur.invalid && (fdur.dirty || fdur.touched)"
+          >
+            Duration is required.
+          </div>
           <input
             placeholder="Quality"
             [(ngModel)]="film.quality"
             name="fqual"
+            required
+            #fqual="ngModel"
           />
+          <div
+            class="error"
+            *ngIf="fqual.invalid && (fqual.dirty || fqual.touched)"
+          >
+            Quality is required.
+          </div>
           <input
             placeholder="Preview Photo URL"
             [(ngModel)]="film.previewPhoto"
             name="fpreview"
+            required
+            #fpreview="ngModel"
           />
+          <div
+            class="error"
+            *ngIf="fpreview.invalid && (fpreview.dirty || fpreview.touched)"
+          >
+            <span *ngIf="fpreview.errors?.['required']"
+              >Preview URL is required.</span
+            >
+            <span *ngIf="fpreview.errors?.['pattern']">
+              Please enter a valid http/https URL.
+            </span>
+          </div>
           <input
             placeholder="Age Limit"
             [(ngModel)]="film.ageLimit"
             name="fage"
+            required
+            #fage="ngModel"
           />
-          <input type="date" [(ngModel)]="film.dateOfPublish" name="fdate" />
-          <input type="number" placeholder="Budget" [(ngModel)]="film.budget" name="fbud" />
-
+          <div
+            class="error"
+            *ngIf="fage.invalid && (fage.dirty || fage.touched)"
+          >
+            Age limit is required.
+          </div>
+          <input
+            type="date"
+            [(ngModel)]="film.dateOfPublish"
+            name="fdate"
+            required
+            #fdate="ngModel"
+          />
+          <div
+            class="error"
+            *ngIf="fdate.invalid && (fdate.dirty || fdate.touched)"
+          >
+            Publish date is required.
+          </div>
+          <input
+            type="number"
+            placeholder="Budget"
+            [(ngModel)]="film.budget"
+            name="fbud"
+            required
+            min="0.01"
+            #fbud="ngModel"
+          />
+          <div
+            class="error"
+            *ngIf="fbud.invalid && (fbud.dirty || fbud.touched)"
+          >
+            <span *ngIf="fbud.errors?.['required']">Budget is required.</span>
+            <span *ngIf="fbud.errors?.['min']">Budget must be positive.</span>
+          </div>
           <label>
             Series
             <select [(ngModel)]="film.seriesId" name="fseries">
@@ -250,7 +339,13 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
           </label>
           <label>
             Production company
-            <select [(ngModel)]="film.productionCompanyId" name="fprod">
+            <select
+              [(ngModel)]="film.productionCompanyId"
+              name="fprod"
+              required
+              #fprod="ngModel"
+            >
+              <option [ngValue]="null">-- select --</option>
               <option
                 *ngFor="let pc of productionCompanies()"
                 [ngValue]="pc.id"
@@ -259,60 +354,145 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
               </option>
             </select>
           </label>
+          <div
+            class="error"
+            *ngIf="fprod.invalid && (fprod.dirty || fprod.touched)"
+          >
+            Production company is required.
+          </div>
           <label>
             Genres
-            <select multiple [(ngModel)]="film.genreIds" name="fgenres">
+            <select
+              multiple
+              [(ngModel)]="film.genreIds"
+              name="fgenres"
+              #fgenres="ngModel"
+              (change)="onGenresChange()"
+            >
               <option *ngFor="let g of genres()" [ngValue]="g.id">
                 {{ g.genreName }}
               </option>
             </select>
           </label>
+          <div class="error" *ngIf="genresError">
+            Select at least one genre.
+          </div>
           <div class="actions">
-            <button type="button" (click)="saveFilm()">
+            <button
+              type="button"
+              (click)="onSaveFilm(filmForm)"
+              [disabled]="filmForm.invalid || genresError"
+            >
               {{ film.id ? 'Update' : 'Create' }}
             </button>
             <button type="button" (click)="clear()">Clear</button>
           </div>
         </form>
         <!-- SERIES FORM -->
-        <form *ngIf="entity() === 'series'">
-          <input placeholder="Name" [(ngModel)]="series.name" name="sname" />
+        <form *ngIf="entity() === 'series'" #seriesForm="ngForm">
+          <input
+            placeholder="Name"
+            [(ngModel)]="series.name"
+            name="sname"
+            required
+            #sname="ngModel"
+          />
+          <div
+            class="error"
+            *ngIf="sname.invalid && (sname.dirty || sname.touched)"
+          >
+            Name is required.
+          </div>
           <input
             placeholder="Age Limit"
             [(ngModel)]="series.ageLimit"
             name="sage"
+            required
+            #sage="ngModel"
           />
-
+          <div
+            class="error"
+            *ngIf="sage.invalid && (sage.dirty || sage.touched)"
+          >
+            Age limit is required.
+          </div>
           <input
             type="date"
             placeholder="Date of publish"
             [(ngModel)]="series.dateOfPublish"
             name="sdofpub"
+            required
+            #sdofpub="ngModel"
           />
+          <div
+            class="error"
+            *ngIf="sdofpub.invalid && (sdofpub.dirty || sdofpub.touched)"
+          >
+            Date of publish is required.
+          </div>
           <input
             placeholder="Country of production"
             [(ngModel)]="series.countryOfProduction"
             name="scofprod"
+            required
+            #scofprod="ngModel"
           />
+          <div
+            class="error"
+            *ngIf="scofprod.invalid && (scofprod.dirty || scofprod.touched)"
+          >
+            Country of production is required.
+          </div>
           <input
             placeholder="Production company"
             [(ngModel)]="series.productionCompanyName"
             name="spcom"
+            required
+            #spcom="ngModel"
           />
+          <div
+            class="error"
+            *ngIf="spcom.invalid && (spcom.dirty || spcom.touched)"
+          >
+            Production company is required.
+          </div>
           <input
             placeholder="Status"
             [(ngModel)]="series.status"
             name="sstat"
+            required
+            #sstat="ngModel"
           />
+          <div
+            class="error"
+            *ngIf="sstat.invalid && (sstat.dirty || sstat.touched)"
+          >
+            Status is required.
+          </div>
           <input
             type="number"
             placeholder="Number of episodes"
             [(ngModel)]="series.numberOfEpisodes"
             name="snumofeps"
+            required
+            min="1"
+            #snumofeps="ngModel"
           />
-
+          <div
+            class="error"
+            *ngIf="snumofeps.invalid && (snumofeps.dirty || snumofeps.touched)"
+          >
+            <span *ngIf="snumofeps.errors?.['required']">
+              Number of episodes is required.
+            </span>
+            <span *ngIf="snumofeps.errors?.['min']"> Must be at least 1. </span>
+          </div>
           <div class="actions">
-            <button type="button" (click)="saveSeries()">
+            <button
+              type="button"
+              (click)="onSaveSeries(seriesForm)"
+              [disabled]="seriesForm.invalid"
+            >
               {{ series.id ? 'Update' : 'Create' }}
             </button>
             <button type="button" (click)="clear()">Clear</button>
@@ -320,44 +500,90 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
         </form>
 
         <!-- TRAILER FORM -->
-        <form *ngIf="entity() === 'trailers'">
+        <form *ngIf="entity() === 'trailers'" #trailerForm="ngForm">
           <input
             placeholder="Title"
             [(ngModel)]="trailer.title"
             name="ttitle"
+            required
+            #ttitle="ngModel"
           />
-
+          <div
+            class="error"
+            *ngIf="ttitle.invalid && (ttitle.dirty || ttitle.touched)"
+          >
+            Title is required.
+          </div>
           <input
             placeholder="URL"
             [(ngModel)]="trailer.trailerUrl"
             name="turl"
+            required
+            pattern="https?://.+"
+            #turl="ngModel"
           />
-
+          <div
+            class="error"
+            *ngIf="turl.invalid && (turl.dirty || turl.touched)"
+          >
+            <span *ngIf="turl.errors?.['required']">URL is required.</span>
+            <span *ngIf="turl.errors?.['pattern']"
+              >Enter a valid http/https URL.</span
+            >
+          </div>
           <input
             placeholder="Duration"
             [(ngModel)]="trailer.duration"
             name="tdur"
+            required
+            #tdur="ngModel"
           />
-
+          <div
+            class="error"
+            *ngIf="tdur.invalid && (tdur.dirty || tdur.touched)"
+          >
+            Duration is required.
+          </div>
           <input
             placeholder="Age Limit"
             [(ngModel)]="trailer.ageLimit"
             name="tage"
+            required
+            #tage="ngModel"
           />
-
-          <!-- Film selector -->
+          <div
+            class="error"
+            *ngIf="tage.invalid && (tage.dirty || tage.touched)"
+          >
+            Age limit is required.
+          </div>
           <label>
             Film
-            <select [(ngModel)]="trailer.filmId" name="tfilm">
+            <select
+              [(ngModel)]="trailer.filmId"
+              name="tfilm"
+              required
+              #tfilm="ngModel"
+            >
               <option [ngValue]="null">-- select film --</option>
               <option *ngFor="let f of regularFilms()" [ngValue]="f.id">
                 {{ f.name }} (ID: {{ f.id }})
               </option>
             </select>
           </label>
+          <div
+            class="error"
+            *ngIf="tfilm.invalid && (tfilm.dirty || tfilm.touched)"
+          >
+            Film is required.
+          </div>
 
           <div class="actions">
-            <button type="button" (click)="saveTrailer()">
+            <button
+              type="button"
+              (click)="onSaveTrailer(trailerForm)"
+              [disabled]="trailerForm.invalid"
+            >
               {{ trailer.id ? 'Update' : 'Create' }}
             </button>
             <button type="button" (click)="clear()">Clear</button>
@@ -365,28 +591,52 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
         </form>
 
         <!-- RATING FORM -->
-        <form *ngIf="entity() === 'ratings'">
+        <form *ngIf="entity() === 'ratings'" #ratingForm="ngForm">
           <div class="muted" *ngIf="rating.id">
             Editing rating #{{ rating.id }}
           </div>
+
           <label>
             Film
-            <select [(ngModel)]="rating.filmId" name="rfilm">
+            <select
+              [(ngModel)]="rating.filmId"
+              name="rfilm"
+              required
+              #rfilm="ngModel"
+            >
               <option [ngValue]="null">-- select film --</option>
               <option *ngFor="let f of regularFilms()" [ngValue]="f.id">
                 {{ f.name }} (ID: {{ f.id }})
               </option>
             </select>
           </label>
+          <div
+            class="error"
+            *ngIf="rfilm.invalid && (rfilm.dirty || rfilm.touched)"
+          >
+            Film is required.
+          </div>
+
           <label>
             User
-            <select [(ngModel)]="rating.userId" name="ruser">
+            <select
+              [(ngModel)]="rating.userId"
+              name="ruser"
+              required
+              #ruser="ngModel"
+            >
               <option [ngValue]="null">-- select user --</option>
               <option *ngFor="let u of users()" [ngValue]="u.id">
                 {{ u.name }} ({{ u.email }})
               </option>
             </select>
           </label>
+          <div
+            class="error"
+            *ngIf="ruser.invalid && (ruser.dirty || ruser.touched)"
+          >
+            User is required.
+          </div>
 
           <input
             type="number"
@@ -395,10 +645,21 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
             placeholder="1..5"
             [(ngModel)]="rating.rating"
             name="rr"
+            required
+            #rr="ngModel"
           />
+          <div class="error" *ngIf="rr.invalid && (rr.dirty || rr.touched)">
+            <span *ngIf="rr.errors?.['required']">Rating is required.</span>
+            <span *ngIf="rr.errors?.['min']">Minimum rating is 1.</span>
+            <span *ngIf="rr.errors?.['max']">Maximum rating is 5.</span>
+          </div>
 
           <div class="actions">
-            <button type="button" (click)="saveRating()">
+            <button
+              type="button"
+              (click)="onSaveRating(ratingForm)"
+              [disabled]="ratingForm.invalid"
+            >
               {{ rating.id ? 'Update' : 'Create' }}
             </button>
             <button type="button" (click)="clear()">Clear</button>
@@ -406,42 +667,88 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
         </form>
 
         <!-- COMMENT FORM -->
-        <form *ngIf="entity() === 'comments'">
+        <form *ngIf="entity() === 'comments'" #commentForm="ngForm">
           <textarea
             placeholder="Text"
             [(ngModel)]="comment.textOfComment"
             name="ctext"
+            required
+            #ctext="ngModel"
           ></textarea>
+          <div
+            class="error"
+            *ngIf="ctext.invalid && (ctext.dirty || ctext.touched)"
+          >
+            Text is required.
+          </div>
+
           <div class="checkbox-field">
             <input type="checkbox" [(ngModel)]="comment.spoiler" name="csp" />
             <label>spoiler</label>
           </div>
+
           <input
             placeholder="Language"
             [(ngModel)]="comment.language"
             name="clang"
+            required
+            #clang="ngModel"
           />
+          <div
+            class="error"
+            *ngIf="clang.invalid && (clang.dirty || clang.touched)"
+          >
+            Language is required.
+          </div>
+
           <label>
             Film
-            <select [(ngModel)]="comment.filmId" name="cfilm">
+            <select
+              [(ngModel)]="comment.filmId"
+              name="cfilm"
+              required
+              #cfilm="ngModel"
+            >
               <option [ngValue]="null">-- select film --</option>
               <option *ngFor="let f of regularFilms()" [ngValue]="f.id">
                 {{ f.name }} (ID: {{ f.id }})
               </option>
             </select>
           </label>
+          <div
+            class="error"
+            *ngIf="cfilm.invalid && (cfilm.dirty || cfilm.touched)"
+          >
+            Film is required.
+          </div>
+
           <label>
             User
-            <select [(ngModel)]="comment.userId" name="cuser">
+            <select
+              [(ngModel)]="comment.userId"
+              name="cuser"
+              required
+              #cuser="ngModel"
+            >
               <option [ngValue]="null">-- select user --</option>
               <option *ngFor="let u of users()" [ngValue]="u.id">
                 {{ u.name }} ({{ u.email }})
               </option>
             </select>
           </label>
+          <div
+            class="error"
+            *ngIf="cuser.invalid && (cuser.dirty || cuser.touched)"
+          >
+            User is required.
+          </div>
 
           <div class="actions">
-            <button type="button" (click)="saveComment()">
+            <button
+              type="button"
+              (click)="onSaveComment(commentForm)"
+              [disabled]="commentForm.invalid"
+            >
               {{ comment.id ? 'Update' : 'Create' }}
             </button>
             <button type="button" (click)="clear()">Clear</button>
@@ -729,5 +1036,47 @@ export class AdminListComponent {
   }
   getGenreNames(film: any): string {
     return (film.genres || []).map((g: any) => g.genreName).join(', ');
+  }
+  genresError = false;
+
+  onGenresChange() {
+    const ids = this.film.genreIds || [];
+    this.genresError = !ids || ids.length === 0;
+  }
+
+  onSaveFilm(form: any) {
+    if (form.invalid || this.genresError) {
+      form.control.markAllAsTouched();
+      return;
+    }
+    this.saveFilm();
+  }
+  onSaveSeries(form: any) {
+    if (form.invalid) {
+      form.control.markAllAsTouched();
+      return;
+    }
+    this.saveSeries();
+  }
+  onSaveTrailer(form: any) {
+    if (form.invalid) {
+      form.control.markAllAsTouched();
+      return;
+    }
+    this.saveTrailer();
+  }
+  onSaveRating(form: any) {
+    if (form.invalid) {
+      form.control.markAllAsTouched();
+      return;
+    }
+    this.saveRating();
+  }
+  onSaveComment(form: any) {
+    if (form.invalid) {
+      form.control.markAllAsTouched();
+      return;
+    }
+    this.saveComment();
   }
 }

@@ -82,14 +82,19 @@ import { WikiDescriptionService } from '../../services/wiki-description.service'
         color: #999;
         cursor: default;
       }
+      .error {
+        color: #b00020;
+        font-size: 12px;
+        margin-top: -4px;
+        margin-bottom: 6px;
+      }
+      .actions {
+        margin-top: 12px;
+      }
     `,
   ],
   template: `
     <h2 *ngIf="seriesId() === null">Films</h2>
-    <h2 *ngIf="seriesId() !== null">
-      <a routerLink="/" style="text-decoration:none; color:#666">Home</a> /
-      Series Details (ID: {{ seriesId() }})
-    </h2>
 
     <div class="grid">
       <div
@@ -100,25 +105,85 @@ import { WikiDescriptionService } from '../../services/wiki-description.service'
       </div>
 
       <div class="card" *ngFor="let f of films()">
-        <!-- Buy Button (Home Page Only) -->
-        <div *ngIf="seriesId() === null && f.id">
+        <div *ngIf="seriesId() === null && f.id && auth.isLoggedIn()">
           <button class="buy-button" (click)="toggleBuying(f.id!)">
             Buy film
           </button>
         </div>
 
-        <!-- Payment Form -->
         <div class="section" *ngIf="f.id && isBuying(f.id!)">
           <h4>Payment Details for {{ f.name }}</h4>
-          <form class="payment-form">
-            <input placeholder="Card Number" name="cc-{{ f.id }}" />
-            <input placeholder="Name on Card" name="cc-name-{{ f.id }}" />
-            <input placeholder="CVC" name="cc-cvc-{{ f.id }}" />
-            <button type="button">Buy Now</button>
-            <button type="button" (click)="toggleBuying(f.id!)">Cancel</button>
+          <form class="payment-form" #paymentForm="ngForm">
+            <input
+              placeholder="Card Number"
+              [(ngModel)]="payment.cardNumber"
+              name="cc-{{ f.id }}"
+              required
+              pattern="^\\d{12,19}$"
+              #cardNumber="ngModel"
+            />
+            <div
+              class="error"
+              *ngIf="
+                cardNumber.invalid && (cardNumber.dirty || cardNumber.touched)
+              "
+            >
+              <span *ngIf="cardNumber.errors?.['required']"
+                >Card number is required.</span
+              >
+              <span *ngIf="cardNumber.errors?.['pattern']"
+                >Card number must be 12–19 digits.</span
+              >
+            </div>
+
+            <input
+              placeholder="Name on Card"
+              [(ngModel)]="payment.nameOnCard"
+              name="cc-name-{{ f.id }}"
+              required
+              #nameOnCard="ngModel"
+            />
+            <div
+              class="error"
+              *ngIf="
+                nameOnCard.invalid && (nameOnCard.dirty || nameOnCard.touched)
+              "
+            >
+              Name on card is required.
+            </div>
+
+            <input
+              placeholder="CVC"
+              [(ngModel)]="payment.cvc"
+              name="cc-cvc-{{ f.id }}"
+              required
+              pattern="^\\d{3,4}$"
+              #cvc="ngModel"
+            />
+            <div
+              class="error"
+              *ngIf="cvc.invalid && (cvc.dirty || cvc.touched)"
+            >
+              <span *ngIf="cvc.errors?.['required']">CVC is required.</span>
+              <span *ngIf="cvc.errors?.['pattern']"
+                >CVC must be 3 or 4 digits.</span
+              >
+            </div>
+
+            <div class="actions">
+              <button
+                type="button"
+                (click)="onBuy(paymentForm, f.id)"
+                [disabled]="paymentForm.invalid"
+              >
+                Buy Now
+              </button>
+              <button type="button" (click)="toggleBuying(f.id!)">
+                Cancel
+              </button>
+            </div>
           </form>
         </div>
-
         <h3>{{ f.name }}</h3>
         <div class="muted">
           {{ f.quality || '—' }} • {{ f.duration || '—' }} •
@@ -132,7 +197,6 @@ import { WikiDescriptionService } from '../../services/wiki-description.service'
           </p>
           <p *ngIf="!f.description" class="muted">No description yet.</p>
 
-          <!-- Hover / click action: only if no description -->
           <div
             *ngIf="!f.description && f.id"
             class="wiki-action"
@@ -147,7 +211,6 @@ import { WikiDescriptionService } from '../../services/wiki-description.service'
           </div>
         </div>
 
-        <!-- Ratings -->
         <div class="section" *ngIf="f.id">
           <strong>Average rating:</strong>
           <ng-container *ngIf="ratingCount(f) > 0; else noRating">
@@ -156,7 +219,6 @@ import { WikiDescriptionService } from '../../services/wiki-description.service'
           <ng-template #noRating>— No ratings yet</ng-template>
         </div>
 
-        <!-- Toggle Details -->
         <div class="toggle" *ngIf="f.id" (click)="toggleDetails(f.id!)">
           {{
             isOpen(f.id!)
@@ -165,7 +227,6 @@ import { WikiDescriptionService } from '../../services/wiki-description.service'
           }}
         </div>
 
-        <!-- Details Section -->
         <div *ngIf="f.id && isOpen(f.id!)">
           <div class="section">
             <strong>Trailers</strong>
@@ -269,7 +330,7 @@ export class HomeComponent {
   constructor(
     private data: DataService,
     private route: ActivatedRoute,
-    private auth: AuthService,
+    public auth: AuthService,
     private wikiService: WikiDescriptionService
   ) {
     this.route.paramMap.subscribe((params) => {
@@ -281,7 +342,6 @@ export class HomeComponent {
       }
     });
 
-    // Debug: Watch data to see why filter might fail
     effect(() => {
       const currentId = this.seriesId();
       const allFilms = this.allFilms();
@@ -429,5 +489,17 @@ export class HomeComponent {
         this.wikiLoading[id] = false;
       },
     });
+  }
+  payment = {
+    cardNumber: '',
+    nameOnCard: '',
+    cvc: '',
+  };
+
+  onBuy(form: any, filmId: number) {
+    if (form.invalid) {
+      form.control.markAllAsTouched();
+      return;
+    }
   }
 }
