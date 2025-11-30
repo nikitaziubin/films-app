@@ -82,6 +82,7 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
             <th>Duration</th>
             <th>Age Limit</th>
             <th>Budget</th>
+            <th>Film cost</th>
             <th>Series</th>
             <th>Production Company</th>
             <th>Genres</th>
@@ -97,6 +98,7 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
             <td>{{ x.duration }}</td>
             <td>{{ x.ageLimit }}</td>
             <td>{{ x.budget }}</td>
+            <td>{{ x.filmPrice }} €</td>
             <td>{{ x.series?.name || '—' }}</td>
             <td>{{ x.productionCompany?.name }}</td>
             <td>{{ getGenreNames(x) }}</td>
@@ -327,6 +329,26 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
           >
             <span *ngIf="fbud.errors?.['required']">Budget is required.</span>
             <span *ngIf="fbud.errors?.['min']">Budget must be positive.</span>
+          </div>
+          <input
+            type="number"
+            placeholder="Film price"
+            [(ngModel)]="film.filmPrice"
+            name="fprice"
+            required
+            min="0.01"
+            #fprice="ngModel"
+          />
+          <div
+            class="error"
+            *ngIf="fprice.invalid && (fprice.dirty || fprice.touched)"
+          >
+            <span *ngIf="fprice.errors?.['required']"
+              >Film price is required.</span
+            >
+            <span *ngIf="fprice.errors?.['min']"
+              >Film price must be positive.</span
+            >
           </div>
           <label>
             Series
@@ -892,6 +914,7 @@ export class AdminListComponent {
       ageLimit: f.ageLimit,
       dateOfPublish: f.dateOfPublish,
       budget: f.budget,
+      filmPrice: f.filmPrice,
       description: f.description,
     };
 

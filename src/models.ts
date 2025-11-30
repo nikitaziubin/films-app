@@ -23,6 +23,7 @@ export interface Film {
   filmsComments?: Comment[];
   trailers?: Trailer[];
   description?: WikiDescription;
+  filmPrice: number;
 }
 
 export interface Series {

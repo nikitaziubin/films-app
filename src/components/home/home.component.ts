@@ -7,6 +7,8 @@ import { DataService } from '../../services/data.service';
 import { RouterLink, RouterOutlet, ActivatedRoute } from '@angular/router';
 import { Film, WikiDescription } from '../../models';
 import { WikiDescriptionService } from '../../services/wiki-description.service';
+import { FilterService } from '../../services/filter.service';
+
 
 @Component({
   standalone: true,
@@ -101,7 +103,7 @@ import { WikiDescriptionService } from '../../services/wiki-description.service'
         *ngIf="films().length === 0"
         style="grid-column: 1/-1; padding: 20px; color: #666;"
       >
-        No films.
+        No such films.
       </div>
 
       <div class="card" *ngFor="let f of films()">
@@ -190,6 +192,7 @@ import { WikiDescriptionService } from '../../services/wiki-description.service'
           {{ f.language || '—' }}
         </div>
         <div class="muted">Genres: {{ getGenreNames(f) }}</div>
+        <div class="muted">Price: {{ f.filmPrice }} €</div>
         <div class="section">
           <strong>Description</strong>
           <p *ngIf="f.description as d">
@@ -331,7 +334,8 @@ export class HomeComponent {
     private data: DataService,
     private route: ActivatedRoute,
     public auth: AuthService,
-    private wikiService: WikiDescriptionService
+    private wikiService: WikiDescriptionService,
+    private filter: FilterService
   ) {
     this.route.paramMap.subscribe((params) => {
       const idString = params.get('id');
@@ -370,18 +374,6 @@ export class HomeComponent {
   globalTrailers = toSignal(this.data.trailers$, { initialValue: [] });
   globalRatings = toSignal(this.data.ratings$, { initialValue: [] });
   globalComments = toSignal(this.data.comments$, { initialValue: [] });
-
-  films = computed(() => {
-    const id = this.seriesId();
-    const all = this.allFilms();
-
-    if (id === null) {
-      // Home Page: Return films where series is null or undefined
-      return all.filter((x) => !x.series);
-    } else {
-      return all.filter((f) => f.series && f.series.id === id);
-    }
-  });
 
   // --- state ---
   openFilmId: number | null = null;
@@ -502,4 +494,78 @@ export class HomeComponent {
       return;
     }
   }
+
+  private parseDurationToMinutes(text?: string | null): number | null {
+    if (!text) return null;
+    const s = String(text).toLowerCase();
+    const hrMin = /(?:(\d+)\s*h(?:ours?)?)?\s*(?:(\d+)\s*m(?:in(?:utes?)?)?)?/;
+    const mOnly = /^(\d+)\s*(m|min|minutes?)?$/;
+    let match = s.match(hrMin);
+    if (match && (match[1] || match[2])) {
+      const h = match[1] ? parseInt(match[1], 10) : 0;
+      const m = match[2] ? parseInt(match[2], 10) : 0;
+      return h * 60 + m;
+    }
+    match = s.match(mOnly);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+    const digits = s.match(/\d+/);
+    return digits ? parseInt(digits[0], 10) : null;
+  }
+
+  films = computed(() => {
+    const id = this.seriesId();
+    const all = this.allFilms();
+
+    let list =
+      id === null
+        ? all.filter((x) => !x.series)
+        : all.filter((f) => f.series && f.series.id === id);
+
+    const raw = this.filter.searchValue;
+    const term = (raw == null ? '' : String(raw)).trim().toLowerCase();
+
+    if (term.length > 0) {
+      list = list.filter((f) => {
+        const name = (f.name || '').toString().trim().toLowerCase();
+        return name.startsWith(term);
+      });
+    }
+
+    const selGenres = this.filter.selectedGenres();
+    if (selGenres && selGenres.length > 0) {
+      list = list.filter((f) => {
+        const ids = (f['genres'] || []).map((g: any) => Number(g.id));
+        return selGenres.every((requiredId) => ids.includes(requiredId));
+      });
+    }
+
+    const minP = this.filter.minPrice();
+    const maxP = this.filter.maxPrice();
+    if (minP != null) {
+      list = list.filter(
+        (f) => typeof f.filmPrice === 'number' && f.filmPrice >= minP
+      );
+    }
+    if (maxP != null) {
+      list = list.filter(
+        (f) => typeof f.filmPrice === 'number' && f.filmPrice <= maxP
+      );
+    }
+
+    const minD = this.filter.minDuration();
+    const maxD = this.filter.maxDuration();
+    if (minD != null || maxD != null) {
+      list = list.filter((f) => {
+        const minutes = this.parseDurationToMinutes(f.duration);
+        if (minutes == null) return false;
+        if (minD != null && minutes < minD) return false;
+        if (maxD != null && minutes > maxD) return false;
+        return true;
+      });
+    }
+
+    return list;
+  });
 }

@@ -2,11 +2,14 @@ import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { CommonModule, NgIf } from '@angular/common';
+import { FilterService } from '../../services/filter.service';
+import { FilterPanelComponent } from '../filter-panel/filter-panel.component';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [RouterLink, NgIf, CommonModule],
+  imports: [RouterLink, NgIf, CommonModule, FormsModule, FilterPanelComponent],
   styles: [
     `
       nav {
@@ -64,6 +67,15 @@ import { CommonModule, NgIf } from '@angular/common';
         font-size: 0.8em;
         margin-left: 5px;
       }
+      .filter-wrap {
+        position: relative;
+      }
+      .filter-popup {
+        position: absolute;
+        right: 0;
+        top: 44px;
+        z-index: 30;
+      }
     `,
   ],
   template: `
@@ -83,8 +95,14 @@ import { CommonModule, NgIf } from '@angular/common';
 
       <span class="spacer"></span>
 
-      <input placeholder="Search films..." />
-      <button type="button">Filter</button>
+      <div class="filter-wrap">
+        <input placeholder="Search films..." [(ngModel)]="filter.searchValue" />
+        <button type="button" (click)="filter.togglePanel()">Filter</button>
+
+        <div class="filter-popup" *ngIf="filter.showPanel()">
+          <app-filter-panel></app-filter-panel>
+        </div>
+      </div>
 
       <span *ngIf="!auth.isLoggedIn()" style="margin-left: 15px;">
         <a routerLink="/login">Login</a>
@@ -109,5 +127,5 @@ import { CommonModule, NgIf } from '@angular/common';
   `,
 })
 export class NavbarComponent {
-  constructor(public auth: AuthService) {}
+  constructor(public auth: AuthService, public filter: FilterService) {}
 }
