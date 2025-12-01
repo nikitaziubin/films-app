@@ -8,6 +8,9 @@ import { RouterLink, RouterOutlet, ActivatedRoute } from '@angular/router';
 import { Film, WikiDescription } from '../../models';
 import { WikiDescriptionService } from '../../services/wiki-description.service';
 import { FilterService } from '../../services/filter.service';
+import { PaymentService } from '../../services/payment.service';
+import { loadStripe, Stripe, StripeElements, StripeCardElement } from '@stripe/stripe-js';
+import { environment } from '../../environments/environment';
 
 
 @Component({
@@ -112,80 +115,51 @@ import { FilterService } from '../../services/filter.service';
             Buy film
           </button>
         </div>
-
         <div class="section" *ngIf="f.id && isBuying(f.id!)">
           <h4>Payment Details for {{ f.name }}</h4>
-          <form class="payment-form" #paymentForm="ngForm">
-            <input
-              placeholder="Card Number"
-              [(ngModel)]="payment.cardNumber"
-              name="cc-{{ f.id }}"
-              required
-              pattern="^\\d{12,19}$"
-              #cardNumber="ngModel"
-            />
-            <div
-              class="error"
-              *ngIf="
-                cardNumber.invalid && (cardNumber.dirty || cardNumber.touched)
-              "
-            >
-              <span *ngIf="cardNumber.errors?.['required']"
-                >Card number is required.</span
-              >
-              <span *ngIf="cardNumber.errors?.['pattern']"
-                >Card number must be 12–19 digits.</span
-              >
-            </div>
 
-            <input
-              placeholder="Name on Card"
-              [(ngModel)]="payment.nameOnCard"
-              name="cc-name-{{ f.id }}"
-              required
-              #nameOnCard="ngModel"
-            />
-            <div
-              class="error"
-              *ngIf="
-                nameOnCard.invalid && (nameOnCard.dirty || nameOnCard.touched)
-              "
-            >
-              Name on card is required.
-            </div>
+          <div *ngIf="!auth.currentUser?.id" class="muted">
+            You must be logged in to buy this film.
+          </div>
 
-            <input
-              placeholder="CVC"
-              [(ngModel)]="payment.cvc"
-              name="cc-cvc-{{ f.id }}"
-              required
-              pattern="^\\d{3,4}$"
-              #cvc="ngModel"
-            />
-            <div
-              class="error"
-              *ngIf="cvc.invalid && (cvc.dirty || cvc.touched)"
-            >
-              <span *ngIf="cvc.errors?.['required']">CVC is required.</span>
-              <span *ngIf="cvc.errors?.['pattern']"
-                >CVC must be 3 or 4 digits.</span
-              >
-            </div>
-
-            <div class="actions">
+          <ng-container *ngIf="auth.currentUser?.id">
+            <div *ngIf="!clientSecrets[f.id!]">
               <button
                 type="button"
-                (click)="onBuy(paymentForm, f.id)"
-                [disabled]="paymentForm.invalid"
+                (click)="startPayment(f.id!)"
+                [disabled]="processingPaymentFor === f.id"
               >
-                Buy Now
-              </button>
-              <button type="button" (click)="toggleBuying(f.id!)">
-                Cancel
+                {{
+                  processingPaymentFor === f.id
+                    ? 'Preparing payment…'
+                    : 'Start payment'
+                }}
               </button>
             </div>
-          </form>
+
+            <form
+              *ngIf="clientSecrets[f.id!]"
+              (ngSubmit)="confirmPayment(f.id!)"
+              class="payment-form"
+            >
+              <div id="card-element-{{ f.id }}"></div>
+              <div class="actions" style="margin-top:8px;">
+                <button
+                  type="submit"
+                  [disabled]="processingPaymentFor === f.id"
+                >
+                  {{
+                    processingPaymentFor === f.id ? 'Processing…' : 'Pay now'
+                  }}
+                </button>
+                <button type="button" (click)="cancelPayment(f.id!)">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </ng-container>
         </div>
+
         <h3>{{ f.name }}</h3>
         <div class="muted">
           {{ f.quality || '—' }} • {{ f.duration || '—' }} •
@@ -329,13 +303,19 @@ import { FilterService } from '../../services/filter.service';
 export class HomeComponent {
   seriesId = signal<number | null>(null);
   user = computed(() => this.auth.currentUser);
+  private stripe: Stripe | null = null;
+  private elements: StripeElements | null = null;
+  private cardElements: Record<number, StripeCardElement> = {};
+  clientSecrets: Record<number, string> = {};
+  processingPaymentFor: number | null = null;
 
   constructor(
     private data: DataService,
     private route: ActivatedRoute,
     public auth: AuthService,
     private wikiService: WikiDescriptionService,
-    private filter: FilterService
+    private filter: FilterService,
+    private paymentService: PaymentService
   ) {
     this.route.paramMap.subscribe((params) => {
       const idString = params.get('id');
@@ -344,6 +324,7 @@ export class HomeComponent {
       } else {
         this.seriesId.set(null);
       }
+      this.initStripe();
     });
 
     effect(() => {
@@ -367,6 +348,12 @@ export class HomeComponent {
         }
       }
     });
+  }
+  private async initStripe() {
+    this.stripe = await loadStripe(environment.stripePublishableKey);
+    if (this.stripe) {
+      this.elements = this.stripe.elements();
+    }
   }
 
   private allFilms = toSignal(this.data.films$, { initialValue: [] });
@@ -568,4 +555,78 @@ export class HomeComponent {
 
     return list;
   });
+
+  startPayment(filmId: number) {
+    const user = this.auth.currentUser;
+    if (!user || !user.id) {
+      alert('You must be logged in to buy films.');
+      return;
+    }
+    if (!this.stripe || !this.elements) {
+      alert('Payment system is not ready. Please try again.');
+      return;
+    }
+
+    this.processingPaymentFor = filmId;
+
+    this.paymentService.createPaymentIntent(filmId, user.id).subscribe({
+      next: (res) => {
+        this.clientSecrets[filmId] = res.clientSecret;
+
+        // let Angular render the form with <div id="card-element-{{ f.id }}">
+        setTimeout(() => {
+          const card = this.elements!.create('card');
+          card.mount(`#card-element-${filmId}`);
+          this.cardElements[filmId] = card;
+        });
+
+        this.processingPaymentFor = null;
+      },
+      error: (err) => {
+        console.error('Failed to create PaymentIntent', err);
+        alert('Failed to start payment.');
+        this.processingPaymentFor = null;
+      },
+    });
+  }
+
+  async confirmPayment(filmId: number) {
+    if (!this.stripe) return;
+    const clientSecret = this.clientSecrets[filmId];
+    const card = this.cardElements[filmId];
+    if (!clientSecret || !card) return;
+
+    this.processingPaymentFor = filmId;
+
+    const result = await this.stripe.confirmCardPayment(clientSecret, {
+      payment_method: { card },
+    });
+
+    this.processingPaymentFor = null;
+
+    if (result.error) {
+      console.error(result.error);
+      alert(result.error.message || 'Payment failed.');
+      return;
+    }
+
+    if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+      alert('Payment successful! You can now access this film.');
+      // Optional: refresh payments list or mark film as owned in UI
+      this.cancelPayment(filmId); // clear UI
+    }
+  }
+
+  cancelPayment(filmId: number) {
+    const card = this.cardElements[filmId];
+    if (card) {
+      card.unmount();
+      delete this.cardElements[filmId];
+    }
+    delete this.clientSecrets[filmId];
+    if (this.processingPaymentFor === filmId) {
+      this.processingPaymentFor = null;
+    }
+    this.buyFilmId = null; // hide payment section
+  }
 }
