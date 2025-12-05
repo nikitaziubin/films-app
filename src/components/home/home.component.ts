@@ -11,6 +11,8 @@ import { FilterService } from '../../services/filter.service';
 import { PaymentService } from '../../services/payment.service';
 import { loadStripe, Stripe, StripeElements, StripeCardElement } from '@stripe/stripe-js';
 import { environment } from '../../environments/environment';
+import { MessageService } from '../../services/message.service';
+import Fuse from 'fuse.js';
 
 
 @Component({
@@ -306,8 +308,15 @@ export class HomeComponent {
   private stripe: Stripe | null = null;
   private elements: StripeElements | null = null;
   private cardElements: Record<number, StripeCardElement> = {};
+  private fuse?: Fuse<Film>;
   clientSecrets: Record<number, string> = {};
   processingPaymentFor: number | null = null;
+
+  private allFilms = toSignal(this.data.films$, { initialValue: [] });
+  allSeries = toSignal(this.data.series$, { initialValue: [] });
+  globalTrailers = toSignal(this.data.trailers$, { initialValue: [] });
+  globalRatings = toSignal(this.data.ratings$, { initialValue: [] });
+  globalComments = toSignal(this.data.comments$, { initialValue: [] });
 
   constructor(
     private data: DataService,
@@ -315,7 +324,8 @@ export class HomeComponent {
     public auth: AuthService,
     private wikiService: WikiDescriptionService,
     private filter: FilterService,
-    private paymentService: PaymentService
+    private paymentService: PaymentService,
+    private messageService: MessageService
   ) {
     this.route.paramMap.subscribe((params) => {
       const idString = params.get('id');
@@ -330,6 +340,10 @@ export class HomeComponent {
     effect(() => {
       const currentId = this.seriesId();
       const allFilms = this.allFilms();
+      this.fuse = new Fuse(allFilms, {
+        keys: ['name'],
+        threshold: 0.4,
+      });
       if (currentId !== null) {
         console.log(`[Home] Filter Debug:`);
         console.log(
@@ -355,12 +369,6 @@ export class HomeComponent {
       this.elements = this.stripe.elements();
     }
   }
-
-  private allFilms = toSignal(this.data.films$, { initialValue: [] });
-  allSeries = toSignal(this.data.series$, { initialValue: [] });
-  globalTrailers = toSignal(this.data.trailers$, { initialValue: [] });
-  globalRatings = toSignal(this.data.ratings$, { initialValue: [] });
-  globalComments = toSignal(this.data.comments$, { initialValue: [] });
 
   // --- state ---
   openFilmId: number | null = null;
@@ -415,7 +423,7 @@ export class HomeComponent {
 
     if (!d) return;
     if (!u || !u.id) {
-      alert('You must be logged in to rate.');
+      this.messageService.error('You must be logged in to rate.');
       return;
     }
 
@@ -434,7 +442,7 @@ export class HomeComponent {
 
     if (!d || !d.text) return;
     if (!u || !u.id) {
-      alert('You must be logged in to comment.');
+      this.messageService.error('You must be logged in to comment.');
       return;
     }
 
@@ -513,10 +521,23 @@ export class HomeComponent {
     const raw = this.filter.searchValue;
     const term = (raw == null ? '' : String(raw)).trim().toLowerCase();
 
-    if (term.length > 0) {
+    if (term.length > 0 && this.fuse) {
+      const fuse = new Fuse(list, {
+        keys: ['name'],
+        threshold: 0.4,
+      });
+      const results = fuse.search(term);
+      list = results.map((r) => r.item);
+    }
+
+    const rawDesc = this.filter.descriptionSearchValue;
+    const descTerm = (rawDesc == null ? '' : String(rawDesc))
+      .trim()
+      .toLowerCase();
+    if (descTerm.length > 0) {
       list = list.filter((f) => {
-        const name = (f.name || '').toString().trim().toLowerCase();
-        return name.startsWith(term);
+        const shortDesc = this.getShortDescription(f);
+        return shortDesc.includes(descTerm);
       });
     }
 
@@ -559,11 +580,13 @@ export class HomeComponent {
   startPayment(filmId: number) {
     const user = this.auth.currentUser;
     if (!user || !user.id) {
-      alert('You must be logged in to buy films.');
+      this.messageService.error('You must be logged in to buy film.');
       return;
     }
     if (!this.stripe || !this.elements) {
-      alert('Payment system is not ready. Please try again.');
+      this.messageService.error(
+        'Payment system is not ready. Please try again.'
+      );
       return;
     }
 
@@ -584,7 +607,7 @@ export class HomeComponent {
       },
       error: (err) => {
         console.error('Failed to create PaymentIntent', err);
-        alert('Failed to start payment.');
+        this.messageService.error('Failed to start payment.');
         this.processingPaymentFor = null;
       },
     });
@@ -606,15 +629,25 @@ export class HomeComponent {
 
     if (result.error) {
       console.error(result.error);
-      alert(result.error.message || 'Payment failed.');
+      this.messageService.error(result.error.message || 'Payment failed.');
       return;
     }
 
     if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
-      alert('Payment successful! You can now access this film.');
-      // Optional: refresh payments list or mark film as owned in UI
-      this.cancelPayment(filmId); // clear UI
+      this.messageService.success(
+        'Payment successful! You can now access this film.'
+      );
+      this.cancelPayment(filmId);
     }
+  }
+
+  private getShortDescription(film: Film): string {
+    const text = film.description?.descriptionText || '';
+    if (!text) return '';
+
+    const words = text.split(/\s+/).filter(Boolean);
+    //return words.slice(0, 10).join(' ').toLowerCase();
+    return words.join(' ').toLowerCase();
   }
 
   cancelPayment(filmId: number) {
@@ -627,6 +660,6 @@ export class HomeComponent {
     if (this.processingPaymentFor === filmId) {
       this.processingPaymentFor = null;
     }
-    this.buyFilmId = null; // hide payment section
+    this.buyFilmId = null;
   }
 }

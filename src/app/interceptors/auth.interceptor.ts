@@ -14,6 +14,7 @@ import {
   filter,
   take,
 } from 'rxjs';
+import { MessageService } from '../../services/message.service';
 
 let isRefreshing = false;
 const refreshTokenSubject = new BehaviorSubject<string | null>(null);
@@ -24,6 +25,7 @@ export const authInterceptor: HttpInterceptorFn = (
 ) => {
   const authService = inject(AuthService);
   const token = authService.getAccessToken();
+  const messageService = inject(MessageService);
 
   let authReq = req;
   if (token) {
@@ -36,9 +38,10 @@ export const authInterceptor: HttpInterceptorFn = (
         // If we have no refresh token or no user, don't try to refresh
         const hasRefresh = !!localStorage.getItem('refresh_token');
         if (!hasRefresh) {
+          messageService.error('Your session has expired. Please log in again.');
           return throwError(() => error);
         }
-        return handle401Error(authReq, next, authService);
+        return handle401Error(authReq, next, authService, messageService);
       }
       return throwError(() => error);
     })
@@ -54,7 +57,8 @@ const addToken = (req: HttpRequest<any>, token: string) => {
 const handle401Error = (
   request: HttpRequest<any>,
   next: HttpHandlerFn,
-  authService: AuthService
+  authService: AuthService,
+  messageService: MessageService
 ) => {
   if (!isRefreshing) {
     isRefreshing = true;
@@ -65,7 +69,7 @@ const handle401Error = (
         isRefreshing = false;
 
         if (!response) {
-          // refresh failed / user logged out
+          messageService.error('Session refresh failed. Please log in again.');
           return throwError(() => new Error('Refresh token failed'));
         }
 
@@ -74,6 +78,7 @@ const handle401Error = (
       }),
       catchError((err) => {
         isRefreshing = false;
+        messageService.error('Session expired. Please log in again.');
         authService.logout();
         return throwError(() => err);
       })

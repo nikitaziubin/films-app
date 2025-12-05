@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import { single } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class FilterService {
@@ -15,6 +16,13 @@ export class FilterService {
   }
   get searchValue() {
     return this._search();
+  }
+  private descriptionSearch = signal('');
+  set descriptionSearchValue(v: string){
+    this.descriptionSearch.set(v ?? '');
+  }
+  get descriptionSearchValue(){
+    return this.descriptionSearch();
   }
 
   // Genres selected (array of ids)
@@ -67,6 +75,7 @@ export class FilterService {
 
   reset() {
     this._search.set('');
+    this.descriptionSearch.set('');
     this._selectedGenres.set([]);
     this._minPrice.set(null);
     this._maxPrice.set(null);

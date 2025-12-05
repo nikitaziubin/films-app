@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { UserProfile } from '../../models';
 import { UserProfileService } from '../../services/user-profile.service';
 import { AuthService } from '../../services/auth.service';
+import { MessageService } from '../../services/message.service';
 
 @Component({
   standalone: true,
@@ -255,7 +256,8 @@ export class UserProfileComponent {
 
   constructor(
     public auth: AuthService,
-    private userProfileService: UserProfileService
+    private userProfileService: UserProfileService,
+    private messageService: MessageService
   ) {
     this.loadProfile();
   }
@@ -292,7 +294,7 @@ export class UserProfileComponent {
   save() {
     const user = this.auth.currentUser;
     if (!user || !user.id) {
-      alert('You must be logged in.');
+      this.messageService.error('You must be logged in.');
       return;
     }
 
@@ -306,7 +308,6 @@ export class UserProfileComponent {
         next: (p) => {
           this.loaded = true;
           this.profileId = p.id;
-          // success alert handled by interceptor
         },
       });
     } else {

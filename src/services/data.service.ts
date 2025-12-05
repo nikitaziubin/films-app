@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject } from 'rxjs';
 import { Film, Series, Trailer, Rating, Comment, User, ProductionCompany, Genre, Payment } from '../models';
+import { MessageService } from './message.service';
 
 @Injectable({ providedIn: 'root' })
 export class DataService {
@@ -17,7 +18,7 @@ export class DataService {
   genres$ = new BehaviorSubject<Genre[]>([]);
   payments$ = new BehaviorSubject<Payment[]>([]);
 
-  constructor(private http: HttpClient) {
+  constructor(private http: HttpClient, private messageService: MessageService) {
     this.refreshAll();
   }
 
@@ -125,11 +126,6 @@ export class DataService {
       .subscribe((data) => this.comments$.next(data));
   }
 
-  // addComment(comment: any) {
-  //   this.http
-  //     .post(`${this.apiUrl}/films-comments`, comment)
-  //     .subscribe(() => this.getAllComments());
-  // }
   addComment(comment: any) {
     this.http
       .post<Comment>(`${this.apiUrl}/films-comments`, comment)
@@ -137,7 +133,7 @@ export class DataService {
         next: () => this.getAllComments(),
         error: (err) => {
           console.error('Failed to add comment', err);
-          alert('Failed to add comment');
+          this.messageService.error('Failed to add comment');
         },
       });
   }
@@ -171,7 +167,7 @@ export class DataService {
       next: () => this.getAllRatings(),
       error: (err) => {
         console.error('Failed to add rating', err);
-        alert(err.error?.message || 'Failed to add rating');
+        this.messageService.error(err.error?.message || 'Failed to add rating');
       },
     });
   }

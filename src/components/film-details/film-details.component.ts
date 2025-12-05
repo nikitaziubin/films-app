@@ -1,4 +1,3 @@
-// src/app/components/film-details/film-details.component.ts
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Film, WikiDescription } from '../../models';

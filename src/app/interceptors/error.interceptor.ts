@@ -1,4 +1,3 @@
-
 import {
   HttpInterceptorFn,
   HttpErrorResponse,
@@ -6,19 +5,20 @@ import {
 } from '@angular/common/http';
 import { catchError, tap } from 'rxjs/operators';
 import { throwError } from 'rxjs';
+import { MessageService } from '../../services/message.service';
+import { inject } from '@angular/core';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
+  const messageService = inject(MessageService);
   return next(req).pipe(
-    // SUCCESS responses (200, 201, 204, ...)
     tap((event) => {
       if (event instanceof HttpResponse) {
         if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
-          const status = event.status; // 200, 201, 204...
+          const status = event.status;
           let msg = 'Operation completed successfully.';
           if (status === 201) msg = 'Created successfully.';
           if (status === 204) msg = 'Operation completed (no content).';
-
-          alert(msg);
+          messageService.success(msg);
         }
       }
     }),
@@ -31,13 +31,13 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           message = body.message;
         }
         if (body.errors && Array.isArray(body.errors)) {
-          const details = body.errors
+          const details = body.errorslo
             .map((e: any) => `${e.field}: ${e.message}`)
             .join('\n');
           message = `Validation failed:\n${details}`;
         }
       }
-      alert(message);
+      messageService.success(message);
       return throwError(() => error);
     })
   );

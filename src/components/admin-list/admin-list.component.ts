@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DataService } from '../../services/data.service';
 import { Film, Trailer, Rating, Comment, Series } from '../../models';
+import { MessageService } from '../../services/message.service';
 
 type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
 @Component({
@@ -67,6 +68,161 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
         font-size: 12px;
         margin-top: -4px;
         margin-bottom: 6px;
+      }
+      .confirm-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1100;
+      }
+
+      .confirm-dialog {
+        background: #222;
+        color: #fff;
+        padding: 16px 20px 18px;
+        border-radius: 10px;
+        min-width: 280px;
+        max-width: 90vw;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        border: 1px solid #333;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+          sans-serif;
+      }
+
+      .confirm-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+
+      .confirm-header h3 {
+        flex: 1;
+        margin: 0;
+        font-size: 1rem;
+      }
+
+      .icon-circle {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        background: rgba(255, 160, 0, 0.15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .icon-warning {
+        width: 20px;
+        height: 20px;
+        color: #ffca28; /* amber */
+      }
+
+      .close-btn {
+        background: transparent;
+        border: none;
+        padding: 0;
+        margin: 0;
+        cursor: pointer;
+        color: #aaa;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .close-btn:hover {
+        color: #fff;
+      }
+
+      .icon-close {
+        width: 18px;
+        height: 18px;
+      }
+
+      .confirm-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .btn-cancel,
+      .btn-delete {
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        border: 1px solid transparent;
+      }
+
+      .btn-cancel {
+        background: #333;
+        color: #eee;
+        border-color: #555;
+      }
+
+      .btn-delete {
+        background: #c62828;
+        color: #fff;
+        border-color: #e53935;
+      }
+
+      .btn-cancel:hover {
+        background: #444;
+      }
+
+      .btn-delete:hover {
+        background: #b71c1c;
+      }
+
+      .icon-trash {
+        width: 16px;
+        height: 16px;
+      }
+      .confirm-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1100;
+      }
+
+      /* base dialog styles (your existing ones) */
+      .confirm-dialog {
+        background: #222;
+        color: #fff;
+        padding: 16px 20px 18px;
+        border-radius: 10px;
+        min-width: 280px;
+        max-width: 90vw;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        border: 1px solid #333;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+          sans-serif;
+
+        /* --- animation part --- */
+        transform-origin: top center; /* like a door hinged at the top */
+        transform: scaleY(0.2); /* start squashed vertically */
+        opacity: 0;
+        animation: doorOpen 250ms ease-out forwards;
+      }
+
+      @keyframes doorOpen {
+        from {
+          transform: scaleY(0.2);
+          opacity: 0;
+        }
+        to {
+          transform: scaleY(1);
+          opacity: 1;
+        }
       }
     `,
   ],
@@ -778,6 +934,62 @@ type Entity = 'films' | 'trailers' | 'ratings' | 'comments' | 'series';
         </form>
       </div>
     </div>
+    <div
+      *ngIf="confirmDelete.show"
+      class="confirm-backdrop"
+      (click)="confirmDeleteCancel()"
+    >
+      <div class="confirm-dialog" (click)="$event.stopPropagation()">
+        <div class="confirm-header">
+          <div class="icon-circle">
+            <svg viewBox="0 0 24 24" class="icon-warning" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"
+              ></path>
+            </svg>
+          </div>
+          <h3>Confirm deletion</h3>
+          <button
+            type="button"
+            class="close-btn"
+            (click)="confirmDeleteCancel()"
+            aria-label="Close"
+          >
+            <svg viewBox="0 0 24 24" class="icon-close">
+              <path
+                fill="currentColor"
+                d="M18.3 5.71L12 12.01 5.7 5.7 4.29 7.11 10.59 13.4 4.3 19.7 5.71 21.11 12 14.82l6.29 6.29 1.41-1.41-6.29-6.29 6.29-6.29z"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <p>
+          Are you sure you want to delete this
+          {{ confirmDelete.kind }} item?
+        </p>
+
+        <div class="confirm-actions">
+          <button
+            type="button"
+            class="btn-cancel"
+            (click)="confirmDeleteCancel()"
+          >
+            Cancel
+          </button>
+          <button type="button" class="btn-delete" (click)="confirmDeleteYes()">
+            <svg viewBox="0 0 24 24" class="icon-trash">
+              <path
+                fill="currentColor"
+                d="M9 3v1H4v2h1v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6h1V4h-5V3H9zm2 4h2v10h-2V7zm-3 0h2v10H8V7zm8 0h-2v10h2V7z"
+              />
+            </svg>
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
   `,
 })
 export class AdminListComponent {
@@ -801,6 +1013,11 @@ export class AdminListComponent {
     filmId?: number | null;
     userId?: number | null;
   } = {};
+  confirmDelete = {
+    show: false,
+    kind: null as Entity | null,
+    id: null as number | null,
+  };
 
   // Signals for data
   private allFilms = toSignal(this.data.films$, { initialValue: [] });
@@ -828,7 +1045,11 @@ export class AdminListComponent {
   comments = toSignal(this.data.comments$, { initialValue: [] });
   users = toSignal(this.data.users$, { initialValue: [] });
 
-  constructor(public data: DataService, private route: ActivatedRoute) {
+  constructor(
+    public data: DataService,
+    private route: ActivatedRoute,
+    private messageService: MessageService
+  ) {
     this.route.data.subscribe((d) => {
       const e = (d['entity'] ?? 'films') as Entity;
       this.entity.set(e);
@@ -886,15 +1107,42 @@ export class AdminListComponent {
     this.comment = {};
   }
 
-  remove(kind: Entity, id: number, ev?: Event) {
-    ev?.stopPropagation();
-    if (!confirm('Are you sure you want to delete?')) return;
+  // remove(kind: Entity, id: number, ev?: Event) {
+  //   ev?.stopPropagation();
+  //   if (!confirm('Are you sure you want to delete?')) return;
+  //   if (kind === 'films') this.data.deleteFilm(id);
+  //   if (kind === 'series') this.data.deleteSeries(id);
+  //   if (kind === 'trailers') this.data.deleteTrailer(id);
+  //   if (kind === 'ratings') this.data.deleteRating(id);
+  //   if (kind === 'comments') this.data.deleteComment(id);
+  //   this.clear();
+  // }
+
+  confirmDeleteYes() {
+    if (!this.confirmDelete.kind || this.confirmDelete.id == null) {
+      this.confirmDeleteCancel();
+      return;
+    }
+
+    const { kind, id } = this.confirmDelete;
+
     if (kind === 'films') this.data.deleteFilm(id);
     if (kind === 'series') this.data.deleteSeries(id);
     if (kind === 'trailers') this.data.deleteTrailer(id);
     if (kind === 'ratings') this.data.deleteRating(id);
     if (kind === 'comments') this.data.deleteComment(id);
+
     this.clear();
+    this.confirmDeleteCancel();
+    this.messageService.success('Item deleted successfully.');
+  }
+  remove(kind: Entity, id: number, ev?: Event) {
+    ev?.stopPropagation();
+    this.confirmDelete = { show: true, kind, id };
+  }
+  // user cancels deletion
+  confirmDeleteCancel() {
+    this.confirmDelete = { show: false, kind: null, id: null };
   }
 
   // saves
@@ -972,7 +1220,7 @@ export class AdminListComponent {
     const t = this.trailer as Trailer & { filmId?: number | null };
 
     if (!t.filmId) {
-      alert('Please select a film for the trailer.');
+      this.messageService.error('Please select a film for the trailer.');
       return;
     }
 
@@ -1001,11 +1249,11 @@ export class AdminListComponent {
     };
 
     if (!r.filmId) {
-      alert('Please select a film for the rating.');
+      this.messageService.error('Please select a film for the rating.');
       return;
     }
     if (!r.userId) {
-      alert('Please select a user for the rating.');
+      this.messageService.error('Please select a user for the rating.');
       return;
     }
 
@@ -1032,11 +1280,11 @@ export class AdminListComponent {
     };
 
     if (!c.filmId) {
-      alert('Please select a film for the comment.');
+      this.messageService.error('Please select a film for the comment.');
       return;
     }
     if (!c.userId) {
-      alert('Please select a user for the comment.');
+      this.messageService.error('Please select a user for the comment.');
       return;
     }
 

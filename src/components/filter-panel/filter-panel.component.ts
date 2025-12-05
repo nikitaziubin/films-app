@@ -18,6 +18,20 @@ import { Genre } from '../../models';
       <h4 style="margin:0 0 8px 0">Filter films</h4>
 
       <div style="margin-bottom:8px;">
+        <strong>Description contains</strong>
+        <input
+          type="text"
+          [(ngModel)]="filter.descriptionSearchValue"
+          name="descriptionSearch"
+          placeholder="Search in description..."
+          style="width:100%; margin-top:4px;"
+        />
+        <small style="font-size:0.8rem; color:#666;">
+          Only first 10 words of each description are checked.
+        </small>
+      </div>
+
+      <div style="margin-bottom:8px;">
         <strong>Genres</strong>
         <div *ngFor="let g of genres()" style="margin:4px 0;">
           <label
@@ -108,20 +122,17 @@ import { Genre } from '../../models';
 })
 export class FilterPanelComponent implements OnInit {
   genres = toSignal(this.data.genres$, { initialValue: [] as Genre[] });
-
-  // single price input (interpreted as maximum price)
   price: number | null = null;
 
   // single duration control: maxDuration in minutes (0..180). min is fixed 0.
   maxDuration: number = 180;
 
-  constructor(private data: DataService, private filter: FilterService) {}
+  constructor(private data: DataService, protected filter: FilterService) {}
 
   ngOnInit(): void {
     // initialize from filter service if user previously set values
     this.price = this.filter.maxPrice() ?? null;
     this.maxDuration = this.filter.maxDuration() ?? 180;
-
     console.debug('FilterPanel genres (signal):', this.genres());
   }
 
@@ -165,7 +176,6 @@ export class FilterPanelComponent implements OnInit {
   }
 
   apply() {
-    // set priceRange with null min and price as max
     this.filter.setPriceRange(
       null,
       this.price != null ? Number(this.price) : null

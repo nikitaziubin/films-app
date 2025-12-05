@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 import { Router, RouterLink } from '@angular/router';
+import { MessageService } from '../../services/message.service';
 
 @Component({
   standalone: true,
@@ -118,7 +119,7 @@ export class RegisterComponent {
   phoneNumber = '';
   password = '';
 
-  constructor(private auth: AuthService, private router: Router) {}
+  constructor(private auth: AuthService, private router: Router, private messageService: MessageService) {}
 
   submit() {
     const registerRequest = {
@@ -138,9 +139,7 @@ export class RegisterComponent {
       },
       error: (err) => {
         console.error('Registration failed', err);
-        alert(
-          'Registration failed: ' + (err.error?.message || 'Unknown error')
-        );
+        this.messageService.error('Registration failed: ' + (err.error?.message || 'Unknown error'));
       },
     });
   }
